@@ -1,0 +1,3 @@
+# ur5e_control runtime: standard library only (socket, threading, dataclasses, abc).
+# Development / testing:
+pytest
