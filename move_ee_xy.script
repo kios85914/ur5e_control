@@ -1,0 +1,172 @@
+cmd = """
+def UR_Control():
+    global frequency = 0.0
+    global loop_time = 0.0
+    global current_time = 0
+    global data = [0, 0, 0, 0, 0, 0]
+    global ee_pose = p[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    global ee_speed = p[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    global force = p[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    global joints = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    global fx = 0.0
+    global fy = 0.0
+    global fz = 0.0
+    
+    # ----------------------------------------------------------------
+
+    def limit_motion_in_task_space():
+        # --- x (left, right) ---
+        if (ee_pose[0] > 0.40):
+            if (data[1] > 0.0):
+                data[1] = 0.0
+            end
+        end
+        if (ee_pose[0] < -0.40):
+            if (data[1] < 0.0):
+                data[1] = 0.0
+            end
+        end
+        
+        # --- y (front, back) --- 
+        if (ee_pose[1] < -0.80):
+            if (data[2] < 0.0):
+                data[2] = 0.0
+            end
+        end
+        if (ee_pose[1] > -0.25):
+            if (data[2] > 0.0):
+                data[2] = 0.0
+            end
+        end
+        
+        # --- z (top, down) ---
+        if (ee_pose[2] > 0.50):
+            if (data[3] > 0.0):
+                data[3] = 0.0
+            end
+        end
+        if (ee_pose[2] < 0.11):
+            if (data[3] < 0.0):
+                data[3] = 0.0
+            end
+        end
+    end
+
+    def limit_action(pose):
+        # --- x (left, right) ---
+        if (pose[0] > 0.40):
+            pose[0] = 0.40
+        end
+        if (pose[0] < -0.40):
+            pose[0] = -0.40
+        end
+        
+        # --- y (front, back) --- 
+        if (pose[1] < -0.80):
+            pose[1] = -0.80
+        end
+        if (pose[1] > -0.25):
+            pose[1] = -0.25
+        end
+    end
+
+    thread move_ee():
+        stop_flag = data[4]
+        if (stop_flag == 0):
+            time = 2.0
+            begin_pos = get_actual_tcp_pose()
+            movel(p[data[1], data[2], data[3], 0.00, -3.14, 0.00], 0.1, 0.1, time)
+            zero_ftsensor()
+        end
+
+        if (stop_flag == 1):
+            stopl(0.5)
+        end
+
+        if (stop_flag == 2):
+            time = 2.0
+            begin_pos = get_actual_tcp_pose()
+            movel(p[-0.06, 0.25, 0.115, 0.00, -3.14, 0.00], 0.1, 0.1, time)
+            zero_ftsensor()
+        end
+
+        if (stop_flag == 3):
+          time = 2.0
+          begin_pos = get_actual_tcp_pose()
+          movel(p[data[1], data[2], data[3], -2.2, -2.2, 0.00], 0.1, 0.1, time)
+          zero_ftsensor()
+        end
+
+        return False
+    end
+
+    # ----------------------------------------------------------------
+
+    thread send_state():
+        while True:
+            ee_pose = get_actual_tcp_pose()
+            ee_speed = get_actual_tcp_speed()
+            joints = get_actual_joint_positions()
+
+            state = ""
+            state = str_cat(state, ee_pose)
+            state = str_cat(state, "_")
+            state = str_cat(state, ee_speed)
+            state = str_cat(state, "_")
+            state = str_cat(state, joints)
+            state = str_cat(state, "_")
+            state = str_cat(state, force)
+            state = str_cat(state, "+")
+            
+            socket_send_string(state, "my_script")
+
+            sleep(0.002)
+        end
+    end
+
+    def receive_action():
+        data = socket_read_ascii_float(5, "my_script", 1000)
+    end
+    
+    thread client():
+        if (not socket_open("192.168.0.120", 30002, "my_script")):
+            popup("Cant connect", "Terminal", error = True)
+            halt
+        end
+        local tic = current_time
+
+        send_state_thread = run send_state()
+        control_thread = run move_ee()
+
+        while True:
+
+            receive_action()
+            kill control_thread
+            control_thread = run move_ee()
+            
+            toc = current_time
+            loop_time = toc - tic
+            frequency = 1 / loop_time
+            sync()
+            tic = current_time
+        end
+        return False
+    end
+
+    # ----------------------------------------------------------------
+
+    thread timer():
+        while True:
+            current_time = current_time + get_steptime()
+            sync()
+        end
+        return False
+    end
+    
+    # ----------------------------------------------------------------
+
+    timer_thread = run timer()
+    client_thread = run client()
+    join client_thread
+end
+"""

@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+
+# code-review-graph local data
+.code-review-graph/
+
+# Robot / experiment artifacts
+*.log
+log/
+Saved_Image/
+*.npy
+*.pkl
+*.pth
+
+# OS
+.DS_Store

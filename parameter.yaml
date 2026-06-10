@@ -1,0 +1,43 @@
+action_dim: 2
+action_his_length: 4
+action_space_high:
+- 0.5
+- -0.25
+action_space_low:
+- -0.4
+- -0.775
+as_lim:
+- 0.2
+- 0.2
+b:
+- 4
+batch_size: 32
+deform_dim: 6
+deform_his_length: 3
+density: 2.4911325997967237
+dynamic_friction: 0.25
+initial_random_steps: 500
+load_data_episode: 250
+load_evaldata_episode:
+- false
+- 950
+material_randomize: false
+max_episode: 500
+num_env: 1
+num_frames: 20
+object_mass: 3.0
+obs_dim: 4
+outer_max_episode: 200
+parameter_dim: 2
+process_episode: 1
+process_num: 1
+reward_adapt_flag: 0
+sample_freq: 1
+state_his_length: 3
+test_dynamic_friction: 0.25
+test_episode: 0
+test_flag: true
+test_object_mass: 3.0
+update_iter: 2
+view: true
+youngs: 17.573303731562863
