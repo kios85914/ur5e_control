@@ -1,4 +1,3 @@
-cmd = """
 # =============================================================================
 # motion_daemon.script  --  generalized URScript motion daemon for the UR5e
 # =============================================================================
@@ -248,4 +247,10 @@ def UR_Control():
     client_thread = run client()
     join client_thread
 end
-"""
+
+# When this program is sent to the controller's primary/secondary interface
+# (script_port 30001), the controller compiles and runs the single routine it
+# receives -- i.e. UR_Control() above is executed automatically. Do NOT add an
+# explicit UR_Control() call here: that would attempt to run it twice.
+# HARDWARE-VALIDATION CHECKPOINT: confirm on the real controller that the daemon
+# starts and connects back to the PC (watch the PolyScope log / the PC accept).
