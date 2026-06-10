@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ur5e_control — Developer Manual</title>
+<meta name="description" content="User manual for ur5e_control: a pure control library for the UR5e robot arm over the URScript socket transport.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0F172A; --bg-alt:#0B1120; --surface:#131C30; --surface-2:#1B263F;
+  --muted:#272F42; --border:#2C3A52; --border-soft:#1F2A40;
+  --fg:#F8FAFC; --fg-dim:#AEB9CC; --fg-faint:#7C8AA3;
+  --accent:#22C55E; --accent-dim:#16864033; --accent-soft:#15803D;
+  --info:#38BDF8; --warn:#F59E0B; --danger:#EF4444; --danger-soft:#7F1D1D;
+  --ring:#22C55E;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  --radius:10px; --radius-sm:7px;
+  --sidebar-w:260px; --maxw:880px;
+  --shadow:0 8px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{
+  margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);
+  font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased;
+}
+body::before{ /* subtle scanline texture, very faint */
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.025;
+  background:repeating-linear-gradient(0deg,#fff 0 1px,transparent 1px 3px);
+}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code,kbd{font-family:var(--mono);font-size:.88em}
+h1,h2,h3,h4{font-family:var(--mono);font-weight:600;line-height:1.25;letter-spacing:-.01em}
+
+/* ---------- Layout ---------- */
+.layout{display:flex;min-height:100dvh}
+.sidebar{
+  width:var(--sidebar-w);flex:0 0 var(--sidebar-w);position:sticky;top:0;
+  height:100dvh;overflow-y:auto;background:var(--bg-alt);
+  border-right:1px solid var(--border);padding:20px 14px;z-index:30;
+}
+.brand{display:flex;align-items:center;gap:10px;padding:6px 8px 16px;border-bottom:1px solid var(--border-soft);margin-bottom:12px}
+.brand .logo{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#16a34a,#065f46);display:grid;place-items:center;flex:0 0 34px;box-shadow:0 0 0 1px #14532d}
+.brand .logo svg{width:20px;height:20px;color:#dcfce7}
+.brand .name{font-family:var(--mono);font-weight:700;font-size:15px}
+.brand .ver{font-family:var(--mono);font-size:11px;color:var(--accent);background:var(--accent-dim);padding:1px 7px;border-radius:20px;border:1px solid #15803d55}
+nav.toc{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+nav.toc a{
+  display:flex;align-items:center;gap:10px;color:var(--fg-dim);font-size:13.5px;
+  padding:8px 10px;border-radius:var(--radius-sm);transition:background .18s,color .18s;text-decoration:none;
+}
+nav.toc a svg{width:16px;height:16px;flex:0 0 16px;color:var(--fg-faint);transition:color .18s}
+nav.toc a:hover{background:var(--surface);color:var(--fg)}
+nav.toc a.active{background:var(--accent-dim);color:var(--fg);box-shadow:inset 2px 0 0 var(--accent)}
+nav.toc a.active svg{color:var(--accent)}
+.toc-label{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg-faint);padding:14px 10px 4px}
+
+.main{flex:1 1 auto;min-width:0;position:relative;z-index:1}
+.topbar{
+  position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;
+  background:rgba(11,17,32,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);padding:12px 24px;
+}
+.topbar .crumb{font-family:var(--mono);font-size:12.5px;color:var(--fg-faint)}
+.topbar .crumb b{color:var(--fg-dim);font-weight:500}
+.topbar .spacer{flex:1}
+.topbar .gh{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12px;color:var(--fg-dim);border:1px solid var(--border);padding:6px 11px;border-radius:20px}
+.topbar .gh svg{width:15px;height:15px}
+.menu-btn{display:none;background:var(--surface);border:1px solid var(--border);color:var(--fg);border-radius:8px;width:38px;height:38px;cursor:pointer;align-items:center;justify-content:center}
+.menu-btn svg{width:18px;height:18px}
+
+.content{max-width:var(--maxw);margin:0 auto;padding:40px 24px 120px}
+section{scroll-margin-top:72px;padding-top:18px;margin-top:34px}
+section:first-of-type{margin-top:6px}
+.sec-head{display:flex;align-items:center;gap:12px;margin:0 0 4px}
+.sec-head .ico{width:30px;height:30px;border-radius:8px;background:var(--surface-2);display:grid;place-items:center;border:1px solid var(--border)}
+.sec-head .ico svg{width:17px;height:17px;color:var(--accent)}
+.sec-head h2{font-size:23px;margin:0}
+.lead{color:var(--fg-dim);font-size:15.5px;margin:6px 0 18px}
+h3{font-size:16.5px;margin:30px 0 10px;color:var(--fg);scroll-margin-top:72px}
+p{margin:12px 0}
+hr{border:0;border-top:1px solid var(--border-soft);margin:34px 0}
+
+/* hero */
+.hero{padding:46px 0 8px;border-bottom:1px solid var(--border-soft)}
+.hero .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+.hero h1{font-size:38px;margin:12px 0 8px;letter-spacing:-.02em}
+.hero h1 .blink{color:var(--accent);animation:blink 1.2s steps(2) infinite}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+.hero p{font-size:17px;color:var(--fg-dim);max-width:620px}
+.pill-row{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 6px}
+.pill{font-family:var(--mono);font-size:11.5px;color:var(--fg-dim);background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 12px}
+.pill b{color:var(--accent);font-weight:600}
+
+/* code */
+pre{
+  background:var(--bg-alt);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 18px;overflow-x:auto;margin:14px 0;font-size:13.5px;line-height:1.6;position:relative;
+}
+pre code{font-family:var(--mono);color:#E2E8F0}
+.tok-k{color:#c084fc}      /* keyword */
+.tok-s{color:#86efac}      /* string */
+.tok-c{color:#64748b;font-style:italic} /* comment */
+.tok-f{color:#7dd3fc}      /* function/attr */
+.tok-n{color:#fca5a5}      /* number */
+.tok-d{color:#fcd34d}      /* decorator/class */
+:not(pre)>code{background:var(--surface-2);border:1px solid var(--border-soft);border-radius:5px;padding:1.5px 6px;color:#cbd5e1}
+.code-cap{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;color:var(--fg-faint);margin:18px 0 -6px}
+.code-cap .dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+
+/* tables */
+.table-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:520px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--border-soft);vertical-align:top}
+thead th{background:var(--surface-2);font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--fg-dim);font-weight:600}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--surface)}
+td code{white-space:nowrap}
+.mono{font-family:var(--mono)}
+
+/* callouts */
+.callout{display:flex;gap:13px;border-radius:var(--radius);padding:14px 16px;margin:18px 0;border:1px solid var(--border);background:var(--surface)}
+.callout .ci{flex:0 0 20px;width:20px;height:20px;margin-top:2px}
+.callout .ci svg{width:20px;height:20px}
+.callout .body{font-size:14px;color:var(--fg-dim)}
+.callout .body b{color:var(--fg)}
+.callout.info{border-color:#0c4a6e;background:#0c4a6e22}.callout.info .ci svg{color:var(--info)}
+.callout.warn{border-color:#78350f;background:#78350f22}.callout.warn .ci svg{color:var(--warn)}
+.callout.tip{border-color:#14532d;background:#14532d22}.callout.tip .ci svg{color:var(--accent)}
+.callout.danger{border-color:#7f1d1d;background:#7f1d1d2e}.callout.danger .ci svg{color:var(--danger)}
+
+/* danger / safety banner */
+.safety-banner{border:1px solid var(--danger);background:linear-gradient(180deg,#7f1d1d2e,#0F172A);border-radius:var(--radius);padding:20px 22px;margin:8px 0 6px}
+.safety-banner h3{margin:0 0 6px;color:#fecaca;display:flex;align-items:center;gap:10px}
+.safety-banner h3 svg{width:20px;height:20px;color:var(--danger)}
+.safety-list{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:10px}
+.safety-list li{display:flex;gap:11px;font-size:14px;color:var(--fg-dim)}
+.safety-list li svg{flex:0 0 17px;width:17px;height:17px;color:var(--danger);margin-top:3px}
+
+/* architecture diagram */
+.arch{margin:18px 0;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-alt);padding:22px}
+.layer{display:flex;align-items:center;gap:14px;margin:0}
+.layer + .arrow{display:flex;justify-content:flex-start;padding-left:26px;color:var(--fg-faint)}
+.arrow svg{width:18px;height:18px}
+.lbox{flex:1;border:1px solid var(--border);border-radius:8px;padding:11px 14px;background:var(--surface)}
+.lbox.top{border-color:#15803d;background:#14532d2e}
+.lbox.force{border-color:#0c4a6e;background:#0c4a6e22}
+.lbox h4{margin:0 0 2px;font-size:13.5px}
+.lbox p{margin:0;font-size:12px;color:var(--fg-faint);font-family:var(--sans)}
+.lbox .api{font-family:var(--mono);font-size:11.5px;color:var(--accent)}
+.archtag{font-family:var(--mono);font-size:10px;color:var(--fg-faint);writing-mode:vertical-rl;text-orientation:mixed;text-align:center}
+.wire{display:flex;align-items:center;gap:14px;margin:16px 0;padding:14px;border:1px dashed var(--border);border-radius:8px;background:var(--surface)}
+.wire .node{font-family:var(--mono);font-size:12px;border:1px solid var(--border);border-radius:7px;padding:9px 13px;background:var(--bg-alt);text-align:center}
+.wire .flow{flex:1;display:flex;flex-direction:column;gap:8px;font-family:var(--mono);font-size:11px;color:var(--fg-dim)}
+.wire .flow span{display:flex;align-items:center;gap:8px}
+.wire .flow .ar{color:var(--accent)}
+.wire .flow .ar.rev{color:var(--info)}
+
+/* method cards */
+.api-card{border:1px solid var(--border);border-radius:var(--radius);margin:14px 0;overflow:hidden;background:var(--surface)}
+.api-card>.sig{font-family:var(--mono);font-size:13px;background:var(--bg-alt);padding:12px 16px;border-bottom:1px solid var(--border);color:#e2e8f0;overflow-x:auto}
+.api-card>.sig .nm{color:var(--accent);font-weight:600}
+.api-card>.desc{padding:12px 16px;font-size:14px;color:var(--fg-dim)}
+.api-card>.desc ul{margin:8px 0 0;padding-left:18px}
+.api-card>.desc li{margin:4px 0}
+.badge{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:20px;border:1px solid var(--border);color:var(--fg-faint);margin-left:8px}
+.badge.raises{color:#fca5a5;border-color:#7f1d1d}
+
+footer{border-top:1px solid var(--border);padding:26px 24px;text-align:center;color:var(--fg-faint);font-size:12.5px;font-family:var(--mono)}
+.kfacts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:18px 0}
+.kfact{border:1px solid var(--border);border-radius:var(--radius);padding:14px;background:var(--surface)}
+.kfact .v{font-family:var(--mono);font-size:18px;color:var(--accent)}
+.kfact .l{font-size:12px;color:var(--fg-faint);margin-top:2px}
+
+.backdrop{display:none}
+@media(max-width:920px){
+  .sidebar{position:fixed;left:0;top:0;transform:translateX(-100%);transition:transform .25s ease;box-shadow:var(--shadow)}
+  .sidebar.open{transform:translateX(0)}
+  .menu-btn{display:inline-flex}
+  .backdrop.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:25}
+  .hero h1{font-size:30px}
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ============ SIDEBAR ============ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>
+      </span>
+      <div>
+        <div class="name">ur5e_control</div>
+        <span class="ver">v0.1.0</span>
+      </div>
+    </div>
+    <nav class="toc" id="toc">
+      <div class="toc-label">Getting started</div>
+      <a href="#quickstart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>Quick Start</a>
+      <a href="#install"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Installation</a>
+      <div class="toc-label">Concepts</div>
+      <a href="#architecture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Architecture</a>
+      <a href="#protocol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>Protocol &amp; Frames</a>
+      <div class="toc-label">Reference</div>
+      <a href="#api"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>API Reference</a>
+      <a href="#examples"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>Examples</a>
+      <div class="toc-label">Operations</div>
+      <a href="#safety"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Safety</a>
+      <a href="#force"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6"/><path d="M12 22v-6"/><path d="m4.93 10.93 1.41 1.41"/><circle cx="12" cy="12" r="3"/><path d="M2 12h6"/><path d="M22 12h-6"/></svg>Force Control</a>
+      <a href="#troubleshooting"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Troubleshooting</a>
+    </nav>
+  </aside>
+  <div class="backdrop" id="backdrop"></div>
+
+  <!-- ============ MAIN ============ -->
+  <div class="main">
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn" aria-label="Toggle navigation">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="crumb">docs / <b>manual</b> / ur5e_control</div>
+      <div class="spacer"></div>
+      <span class="gh"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5A12 12 0 0 0 8.2 23.9c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2 0-.4-.5-1.6.2-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.6.2 2.8.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg>tirth8205-style</span>
+    </header>
+
+    <div class="content">
+
+      <!-- HERO -->
+      <div class="hero">
+        <div class="eyebrow">UR5e · pure control library</div>
+        <h1>Drive the arm.<span class="blink">_</span></h1>
+        <p>A clean, dependency-free Python library for commanding a Universal Robots UR5e over the URScript socket transport — full 6-DOF Cartesian and joint motion, with a forward-looking Robotiq FT 300 force-control subsystem.</p>
+        <div class="pill-row">
+          <span class="pill"><b>0</b> runtime deps</span>
+          <span class="pill"><b>129</b> tests passing</span>
+          <span class="pill">Python <b>3.10+</b></span>
+          <span class="pill">meters · radians · <b>base frame</b></span>
+        </div>
+        <div class="callout warn" style="margin-top:22px">
+          <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+          <div class="body">This library moves a <b>real robot arm</b>. Read the <a href="#safety">Safety</a> section before connecting to hardware. The library itself is verified only by code-level tests (parsing, encoding, safety, control law via mocks) — <b>on-robot validation is the operator's responsibility</b>.</div>
+        </div>
+      </div>
+
+      <!-- QUICK START -->
+      <section id="quickstart">
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg></span><h2>Quick Start</h2></div>
+        <p class="lead">Connect, move the tool to a Cartesian pose, read state, return home.</p>
+        <div class="code-cap"><span class="dot"></span>first_move.py</div>
+<pre><code><span class="tok-k">from</span> ur5e_control <span class="tok-k">import</span> UR5eRobot, RobotConfig
+
+<span class="tok-c"># RobotConfig() carries IPs, ports, speed/accel defaults,</span>
+<span class="tok-c"># workspace limits and the world&lt;-&gt;UR frame transform.</span>
+<span class="tok-k">with</span> UR5eRobot(RobotConfig()) <span class="tok-k">as</span> robot:          <span class="tok-c"># connects on enter, disconnects on exit</span>
+    robot.<span class="tok-f">move_l</span>([<span class="tok-n">0.1</span>, <span class="tok-n">0.3</span>, <span class="tok-n">0.2</span>, <span class="tok-n">0.0</span>, <span class="tok-n">-3.14</span>, <span class="tok-n">0.0</span>])  <span class="tok-c"># world frame, m / rad</span>
+
+    state = robot.<span class="tok-f">get_state</span>()                       <span class="tok-c"># RobotState (UR base frame)</span>
+    <span class="tok-f">print</span>(state.tcp_pose, state.wrench)
+
+    robot.<span class="tok-f">move_l</span>([<span class="tok-n">0.0</span>, <span class="tok-n">0.0</span>, <span class="tok-n">0.05</span>, <span class="tok-n">0</span>, <span class="tok-n">0</span>, <span class="tok-n">0</span>], relative=<span class="tok-k">True</span>)  <span class="tok-c"># 5 cm up, relative</span>
+    robot.<span class="tok-f">home</span>()                                  <span class="tok-c"># move to config.home_pose</span>
+</code></pre>
+        <div class="callout tip">
+          <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg></span>
+          <div class="body"><b>What <code>connect()</code> does:</b> uploads the URScript daemon to the controller (<code>controller_ip:script_port</code>), then opens the PC-side socket so the daemon's state stream starts flowing back. Everything else is delegated to the motion layer.</div>
+        </div>
+      </section>
+
+      <!-- INSTALL -->
+      <section id="install">
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span><h2>Installation</h2></div>
+        <p class="lead">Runtime is pure standard library. You only need a virtual environment for the test suite.</p>
+        <div class="code-cap"><span class="dot"></span>shell</div>
+<pre><code><span class="tok-c"># Runtime: no third-party packages required (socket, threading, dataclasses, abc).</span>
+<span class="tok-c"># For the test suite, create a venv (uv shown; venv/pip works too):</span>
+uv venv --python 3.10 .venv
+uv pip install --python .venv/bin/python pytest
+
+<span class="tok-c"># Run the tests</span>
+.venv/bin/python -m pytest -q        <span class="tok-c"># -> 129 passed</span>
+
+<span class="tok-c"># Import smoke test</span>
+.venv/bin/python -c <span class="tok-s">"from ur5e_control import UR5eRobot, RobotConfig, RobotState"</span></code></pre>
+        <div class="kfacts">
+          <div class="kfact"><div class="v">30001</div><div class="l">script_port (daemon upload)</div></div>
+          <div class="kfact"><div class="v">30002</div><div class="l">state_port (PC ↔ daemon)</div></div>
+          <div class="kfact"><div class="v">0.1 m/s</div><div class="l">default speed</div></div>
+          <div class="kfact"><div class="v">0.25 m/s</div><div class="l">max speed (safety cap)</div></div>
+        </div>
+        <div class="callout info">
+          <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>
+          <div class="body">The robot must be in <b>remote control</b> mode and reachable at <code>config.controller_ip</code>. The PC must be reachable from the controller at <code>config.pc_host</code> (the daemon connects <em>back</em> to the PC).</div>
+        </div>
+      </section>
+
+      <!-- ARCHITECTURE -->
+      <section id="architecture">
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span><h2>Architecture</h2></div>
+        <p class="lead">A thin layered stack. Each layer has one job and a narrow interface, so any layer can be tested or swapped on its own.</p>
+
+        <div class="arch">
+          <div class="layer"><div class="lbox top"><h4>UR5eRobot <span class="api">— facade</span></h4><p>The public API. Composes the layers below; owns no geometry. Context-manager lifecycle.</p></div></div>
+          <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></div>
+          <div class="layer"><div class="lbox"><h4>MotionController</h4><p>Encodes commands (byte-exact), applies world→UR transform + safety checks, blocks on convergence.</p></div></div>
+          <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></div>
+          <div class="layer">
+            <div class="lbox"><h4>RobotConnection</h4><p>Thread-safe socket transport: send commands, receive the state stream, reconnect, dry-run.</p></div>
+            <div class="lbox"><h4>script_sender</h4><p>Uploads the URScript daemon to the controller.</p></div>
+          </div>
+          <div class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></div>
+          <div class="layer">
+            <div class="lbox"><h4>config</h4><p class="api">RobotConfig + frame transforms</p></div>
+            <div class="lbox"><h4>state</h4><p class="api">RobotState + parse_state</p></div>
+            <div class="lbox"><h4>safety</h4><p class="api">limit validators + exceptions</p></div>
+          </div>
+        </div>
+
+        <h3>Forward-looking: force subsystem</h3>
+        <div class="arch">
+          <div class="layer">
+            <div class="lbox force"><h4>ForceController</h4><p>approach-until-force, then impedance hold.</p></div>
+            <div class="lbox force"><h4>ForceSensor</h4><p class="api">RobotiqFT300 · MockForceSensor</p></div>
+          </div>
+        </div>
+
+        <h3>On the wire</h3>
+        <div class="wire">
+          <div class="node">PC<br><span style="color:var(--fg-faint)">ur5e_control</span></div>
+          <div class="flow">
+            <span><span class="ar">▶</span> commands &nbsp;<code>(cmd, a0..a5, accel, vel, time)</code></span>
+            <span><span class="ar rev">◀</span> state &nbsp;<code>p[pose]_p[speed]_[joints]_p[wrench]+</code></span>
+          </div>
+          <div class="node">UR controller<br><span style="color:var(--fg-faint)">motion_daemon.script</span></div>
+        </div>
+        <p>The PC binds and listens; the uploaded daemon connects <em>back</em> to the PC on <code>state_port</code>, then runs two threads — one streaming state, one executing the most recent command.</p>
+      </section>
+
+      <!-- PROTOCOL -->
+      <section id="protocol">
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span><h2>Protocol &amp; Frames</h2></div>
+        <p class="lead">Everything is meters, radians, and the UR base frame. World↔UR conversion is explicit in <code>RobotConfig</code> — there is no hidden negation.</p>
+
+        <h3>Command tuple &nbsp;<span style="font-family:var(--sans);font-size:13px;color:var(--fg-faint)">(PC → daemon)</span></h3>
+        <p>A fixed 10-float ASCII string: <code>"(cmd, a0, a1, a2, a3, a4, a5, accel, vel, time)"</code>. The daemon reads it with <code>socket_read_ascii_float(10, …)</code>.</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>cmd</th><th>action</th><th>a0 … a5</th><th>accel / vel / time</th></tr></thead>
+          <tbody>
+            <tr><td><code>0</code></td><td>moveL</td><td>pose <code>x,y,z,rx,ry,rz</code> (m, rad)</td><td>m/s², m/s, s</td></tr>
+            <tr><td><code>1</code></td><td>moveJ</td><td>joints <code>j0..j5</code> (rad)</td><td>rad/s², rad/s, s</td></tr>
+            <tr><td><code>2</code></td><td>stop</td><td><code>a0</code> = deceleration; rest 0</td><td>0</td></tr>
+            <tr><td><code>3</code></td><td>home</td><td>all 0 → daemon uses <code>home_pose</code></td><td>m/s², m/s, s</td></tr>
+            <tr><td><code>4</code></td><td>force <span class="badge">guarded</span></td><td><code>a0..a2</code> direction · <code>a3</code> target N · <code>a4</code> stiffness · <code>a5</code> max travel</td><td>m/s², m/s, s</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>State frame &nbsp;<span style="font-family:var(--sans);font-size:13px;color:var(--fg-faint)">(daemon → PC)</span></h3>
+        <p>Groups separated by <code>_</code>, each frame terminated by <code>+</code>. <code>parse_state</code> takes the last complete frame:</p>
+<pre><code>p[x,y,z,rx,ry,rz]_p[vx,vy,vz,wx,wy,wz]_[j0,j1,j2,j3,j4,j5]_p[fx,fy,fz,tx,ty,tz]+</code></pre>
+        <div class="table-wrap"><table>
+          <thead><tr><th>group</th><th>field</th><th>units</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td><code>tcp_pose</code> — x, y, z, rx, ry, rz</td><td>m, rad</td></tr>
+            <tr><td>2</td><td><code>tcp_speed</code> — vx…wz</td><td>m/s, rad/s</td></tr>
+            <tr><td>3</td><td><code>joints</code> — j0…j5</td><td>rad</td></tr>
+            <tr><td>4</td><td><code>wrench</code> — fx, fy, fz, tx, ty, tz</td><td>N, N·m</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- API REFERENCE -->
+      <section id="api">
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span><h2>API Reference</h2></div>
+        <p class="lead">The public surface. Per-module markdown lives in <code>docs/api/</code>.</p>
+
+        <h3>UR5eRobot <span style="font-family:var(--sans);font-size:13px;color:var(--fg-faint)">— the facade</span></h3>
+
+        <div class="api-card"><div class="sig"><span class="nm">UR5eRobot</span>(config: RobotConfig = RobotConfig())</div>
+          <div class="desc">Construct the robot. No I/O happens until <code>connect()</code>. Usable as a context manager.</div></div>
+
+        <div class="api-card"><div class="sig"><span class="nm">connect</span>() → None &nbsp;·&nbsp; <span class="nm">disconnect</span>() → None</div>
+          <div class="desc"><code>connect()</code> uploads the daemon then starts the state connection. <code>disconnect()</code> closes it (idempotent). Both are driven automatically by the <code>with</code> block.</div></div>
+
+        <div class="api-card"><div class="sig"><span class="nm">move_l</span>(pose, speed=None, accel=None, blocking=True, relative=False) → None</div>
+          <div class="desc">Linear (Cartesian) move of the TCP. <code>pose</code> is a world-frame <code>[x, y, z, rx, ry, rz]</code> in m/rad (a delta if <code>relative=True</code>). Converted to UR frame, workspace-checked, encoded, sent; if blocking, polls until within <code>convergence_tol</code>.
+            <span class="badge raises">raises WorkspaceViolation · SpeedViolation</span></div></div>
+
+        <div class="api-card"><div class="sig"><span class="nm">move_j</span>(joints, speed=None, accel=None, blocking=True) → None</div>
+          <div class="desc">Joint-space move. <code>joints</code> = <code>[j0..j5]</code> in radians (frame-independent). Joint-limit checked; if blocking, waits for the TCP pose to settle.
+            <span class="badge raises">raises JointLimitViolation · SpeedViolation</span></div></div>
+
+        <div class="api-card"><div class="sig"><span class="nm">get_state</span>() → RobotState</div>
+          <div class="desc">Parse the latest streamed frame into a <code>RobotState</code> (UR base frame). <span class="badge raises">raises ValueError if no / malformed frame</span></div></div>
+
+        <div class="api-card"><div class="sig"><span class="nm">stop</span>() → None &nbsp;·&nbsp; <span class="nm">home</span>() → None</div>
+          <div class="desc"><code>stop()</code> commands an immediate controlled stop (cmd 2, non-blocking). <code>home()</code> moves to <code>config.home_pose</code> (cmd 3).</div></div>
+
+        <h3>RobotConfig <span style="font-family:var(--sans);font-size:13px;color:var(--fg-faint)">— all tunables in one place</span></h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th>field</th><th>default</th><th>meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code>controller_ip</code></td><td>192.168.0.135</td><td>UR controller IP (daemon upload)</td></tr>
+            <tr><td><code>script_port</code></td><td>30001</td><td>controller primary interface</td></tr>
+            <tr><td><code>pc_host</code> / <code>state_port</code></td><td>192.168.0.120 / 30002</td><td>where the daemon connects back</td></tr>
+            <tr><td><code>default_speed</code> / <code>default_accel</code></td><td>0.1 / 0.1</td><td>m/s, m/s²</td></tr>
+            <tr><td><code>default_move_time</code></td><td>2.0</td><td>s — move/blend duration</td></tr>
+            <tr><td><code>convergence_tol</code></td><td>1e-3</td><td>blocking-move tolerance (m/rad)</td></tr>
+            <tr><td><code>max_speed</code></td><td>0.25</td><td>hard speed cap (m/s)</td></tr>
+            <tr><td><code>workspace_limits</code></td><td>x(-0.40,0.35) y(0.25,0.80) z(0.0,0.40)</td><td>per-axis bounds (m)</td></tr>
+            <tr><td><code>joint_limits</code></td><td>6 × (-2π, 2π)</td><td>per-joint bounds (rad)</td></tr>
+            <tr><td><code>home_pose</code></td><td>[-0.06, 0.25, 0.115, 0, -3.14, 0]</td><td>UR base frame</td></tr>
+          </tbody>
+        </table></div>
+        <p>Methods <code>world_to_ur(pose)</code> / <code>ur_to_world(pose)</code> convert between frames (default: negate x and y; z and rotations unchanged) and round-trip to identity.</p>
+
+        <h3>RobotState</h3>
+<pre><code><span class="tok-d">@dataclass</span>
+<span class="tok-k">class</span> <span class="tok-d">RobotState</span>:
+    tcp_pose:  list[float]   <span class="tok-c"># [x,y,z,rx,ry,rz]  m, rad</span>
+    tcp_speed: list[float]   <span class="tok-c"># [vx,vy,vz,wx,wy,wz]</span>
+    joints:    list[float]   <span class="tok-c"># [j0..j5] rad</span>
+    wrench:    list[float]   <span class="tok-c"># [fx,fy,fz,tx,ty,tz] N, N·m</span>
+    timestamp: float         <span class="tok-c"># time.time() at parse</span></code></pre>
+
+        <h3>safety</h3>
+        <div class="api-card"><div class="sig"><span class="nm">check_pose_in_workspace</span>(pose, config) &nbsp;·&nbsp; <span class="nm">check_joints</span>(joints, config) &nbsp;·&nbsp; <span class="nm">clamp_speed</span>(speed, config)</div>
+          <div class="desc">Pure validators run before any command is sent. Exceptions: <code>WorkspaceViolation</code>, <code>JointLimitViolation</code>, <code>SpeedViolation</code> (all subclass <code>SafetyViolation</code>).</div></div>
+      </section>
+
+      <!-- EXAMPLES -->
+      <section id="examples">
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></span><h2>Examples</h2></div>
+        <p class="lead">Both shipped examples run with <strong>no robot</strong> — one in dry-run, one with a mock force sensor.</p>
+
+        <h3>Dry-run motion preview</h3>
+        <p>Build and log commands without opening a socket — safe to run anywhere.</p>
+        <div class="code-cap"><span class="dot"></span>ur5e_control/examples/move_example.py</div>
+<pre><code>.venv/bin/python ur5e_control/examples/move_example.py   <span class="tok-c"># EXIT 0, no sockets opened</span></code></pre>
+
+        <h3>Joint move</h3>
+<pre><code><span class="tok-k">import</span> math
+<span class="tok-k">from</span> ur5e_control <span class="tok-k">import</span> UR5eRobot, RobotConfig
+
+<span class="tok-k">with</span> UR5eRobot(RobotConfig()) <span class="tok-k">as</span> robot:
+    robot.<span class="tok-f">move_j</span>([<span class="tok-n">0</span>, -math.pi/<span class="tok-n">2</span>, math.pi/<span class="tok-n">2</span>, -math.pi/<span class="tok-n">2</span>, -math.pi/<span class="tok-n">2</span>, <span class="tok-n">0</span>], speed=<span class="tok-n">0.2</span>)</code></pre>
+
+        <h3>Reading force / state</h3>
+<pre><code><span class="tok-k">with</span> UR5eRobot(RobotConfig()) <span class="tok-k">as</span> robot:
+    s = robot.<span class="tok-f">get_state</span>()
+    fx, fy, fz = s.wrench[<span class="tok-n">0</span>], s.wrench[<span class="tok-n">1</span>], s.wrench[<span class="tok-n">2</span>]
+    <span class="tok-f">print</span>(<span class="tok-s">f"contact force Z = {fz:.1f} N"</span>)</code></pre>
+      </section>
+
+      <!-- SAFETY -->
+      <section id="safety">
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><h2>Safety</h2></div>
+        <div class="safety-banner">
+          <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>This commands a physical robot. Treat every move as live.</h3>
+          <ul class="safety-list">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><span><b>Keep the e-stop within reach.</b> The physical emergency stop on the teach pendant is your real safety device — not <code>robot.stop()</code>.</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span><b>Clear the workspace</b> of people and obstacles before <code>connect()</code>. The first command may move the arm immediately.</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span><b>Start slow.</b> Verify motions at low <code>speed</code> first. Keep <code>max_speed</code> conservative; it is a hard cap, not a suggestion.</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg><span><b>Validate <code>workspace_limits</code> for your cell.</b> Defaults come from a different setup. A pose outside bounds raises <code>WorkspaceViolation</code> and is never sent — set them correctly.</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6"/><circle cx="12" cy="12" r="3"/><path d="M2 12h6"/><path d="M22 12h-6"/></svg><span><b>Force control is disabled by default.</b> The daemon's <code>cmd 4</code> branch is gated behind <code>FORCE_MODE_ENABLED = False</code> so a stray force command cannot drive the arm into a surface before the FT 300 is validated.</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span><b>Dry-run first.</b> Use the dry-run transport / examples to inspect the exact command strings before any of them reach the controller.</span></li>
+          </ul>
+        </div>
+        <div class="callout danger" style="margin-top:18px">
+          <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+          <div class="body"><b>Verification scope.</b> This library is tested only at the code level (parsing, command encoding, safety validation, control law via mocks). <b>Motion correctness on real hardware has not been verified</b> and must be confirmed by the operator on the actual UR5e + cell.</div>
+        </div>
+      </section>
+
+      <!-- FORCE CONTROL -->
+      <section id="force">
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6"/><path d="M12 22v-6"/><path d="m4.93 10.93 1.41 1.41"/><circle cx="12" cy="12" r="3"/><path d="M2 12h6"/><path d="M22 12h-6"/></svg></span><h2>Force Control <span class="badge">Robotiq FT 300 · forward-looking</span></h2></div>
+        <p class="lead">Move along a direction until contact force reaches a target, then hold compliantly (impedance). Interfaces and the control law are implemented and mock-tested; on-robot tuning happens once the FT 300 is mounted.</p>
+
+        <div class="callout warn">
+          <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+          <div class="body"><b>Pending hardware validation.</b> Step size, stiffness, threshold and <code>max_travel</code> are placeholders to tune on the real sensor. The daemon's force branch stays disabled until you set <code>FORCE_MODE_ENABLED = True</code> in <code>motion_daemon.script</code> after validation.</div>
+        </div>
+
+        <h3>Sensor abstraction</h3>
+        <p>A pluggable <code>ForceSensor</code> isolates the read path so the rest of the code never changes when you swap mock → real:</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th>class</th><th>use</th></tr></thead>
+          <tbody>
+            <tr><td><code>ForceSensor</code></td><td>ABC — <code>read() → [fx,fy,fz,tx,ty,tz]</code>, <code>zero()</code></td></tr>
+            <tr><td><code>RobotiqFT300(state_provider)</code></td><td>real sensor; reads the wrench via a state provider (URCap-fed stream now, or a PC-side driver later)</td></tr>
+            <tr><td><code>MockForceSensor(sequence)</code></td><td>scripted wrenches — test the control law with no hardware</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>approach-until-force, then hold</h3>
+        <div class="code-cap"><span class="dot"></span>force demo (mock)</div>
+<pre><code><span class="tok-k">from</span> ur5e_control.force.sensor <span class="tok-k">import</span> MockForceSensor
+<span class="tok-k">from</span> ur5e_control.force.controller <span class="tok-k">import</span> ForceController
+
+<span class="tok-c"># wrenches climb toward contact; last one trips the 5 N target on +Z</span>
+sensor = <span class="tok-f">MockForceSensor</span>([[<span class="tok-n">0</span>,<span class="tok-n">0</span>,<span class="tok-n">1</span>,<span class="tok-n">0</span>,<span class="tok-n">0</span>,<span class="tok-n">0</span>], [<span class="tok-n">0</span>,<span class="tok-n">0</span>,<span class="tok-n">3</span>,<span class="tok-n">0</span>,<span class="tok-n">0</span>,<span class="tok-n">0</span>], [<span class="tok-n">0</span>,<span class="tok-n">0</span>,<span class="tok-n">5.2</span>,<span class="tok-n">0</span>,<span class="tok-n">0</span>,<span class="tok-n">0</span>]])
+fc = <span class="tok-f">ForceController</span>(motion, sensor, config)
+
+fc.<span class="tok-f">approach_until_force</span>(
+    direction=[<span class="tok-n">0</span>, <span class="tok-n">0</span>, <span class="tok-n">1</span>],   <span class="tok-c"># push along +Z</span>
+    target_n=<span class="tok-n">5.0</span>,           <span class="tok-c"># until |F·d̂| ≥ 5 N</span>
+    stiffness=<span class="tok-n">0.08</span>,         <span class="tok-c"># compliance once in contact</span>
+    max_travel=<span class="tok-n">0.12</span>,        <span class="tok-c"># safety budget (m) before giving up</span>
+)</code></pre>
+        <p>The law reads <em>before</em> each step (no overshoot): below-target reads issue one relative step along the unit direction; the contact read stops stepping and emits the <code>cmd 4</code> hold. Contact is decided on the force <em>projected onto the direction</em>, so side forces never false-trigger. Exceeding <code>max_travel</code> raises <code>RuntimeError</code> and emits no hold.</p>
+      </section>
+
+      <!-- TROUBLESHOOTING -->
+      <section id="troubleshooting">
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><h2>Troubleshooting</h2></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>symptom</th><th>likely cause &amp; fix</th></tr></thead>
+          <tbody>
+            <tr><td>Daemon won't start / no state arrives</td><td>The robot must be in <b>remote control</b> mode. Confirm the daemon uploads cleanly (watch the PolyScope log) and that the controller can reach <code>pc_host:state_port</code> — the daemon connects <em>back</em> to the PC, so a PC firewall blocking <code>30002</code> is a common culprit.</td></tr>
+            <tr><td><code>ValueError</code> from <code>get_state()</code></td><td>No complete state frame yet. Allow a moment after <code>connect()</code> for the stream to start, then retry.</td></tr>
+            <tr><td><code>WorkspaceViolation</code> on a valid-looking pose</td><td>Default <code>workspace_limits</code> are for a different cell. Set them for your setup. Remember <code>move_l</code> input is <b>world frame</b>; the check runs after <code>world_to_ur</code>.</td></tr>
+            <tr><td>Blocking move raises <code>TimeoutError</code></td><td>Pose never converged within the poll budget. Check the state stream is live and that <code>convergence_tol</code> isn't unreachably tight (mixing m and rad in one tolerance).</td></tr>
+            <tr><td>Controller rejects the uploaded script</td><td>The daemon must be <b>raw URScript</b> (no Python wrapper). <code>script_sender</code> sends the file verbatim; the controller auto-runs the single routine it receives.</td></tr>
+            <tr><td>Force command does nothing</td><td>Expected until validated: <code>FORCE_MODE_ENABLED = False</code> in the daemon. Enable only after FT 300 bring-up.</td></tr>
+            <tr><td>Robot moves the wrong way in X/Y</td><td>Frame convention. <code>world_to_ur</code> negates x and y by default — adjust the transform in <code>RobotConfig</code> for your world frame.</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+    </div>
+    <footer>ur5e_control v0.1.0 · pure-control library · meters · radians · UR base frame · generated manual</footer>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Mobile sidebar toggle
+  var sb=document.getElementById('sidebar'),bd=document.getElementById('backdrop'),mb=document.getElementById('menuBtn');
+  function close(){sb.classList.remove('open');bd.classList.remove('show');}
+  mb&&mb.addEventListener('click',function(){sb.classList.toggle('open');bd.classList.toggle('show');});
+  bd&&bd.addEventListener('click',close);
+  document.querySelectorAll('nav.toc a').forEach(function(a){a.addEventListener('click',close);});
+
+  // Active section highlight
+  var links=[].slice.call(document.querySelectorAll('nav.toc a'));
+  var map={};links.forEach(function(a){var id=a.getAttribute('href').slice(1);map[id]=a;});
+  var secs=links.map(function(a){return document.getElementById(a.getAttribute('href').slice(1));}).filter(Boolean);
+  var obs=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        links.forEach(function(l){l.classList.remove('active');});
+        var l=map[e.target.id]; if(l)l.classList.add('active');
+      }
+    });
+  },{rootMargin:'-20% 0px -70% 0px',threshold:0});
+  secs.forEach(function(s){obs.observe(s);});
+})();
+</script>
+</body>
+</html>
