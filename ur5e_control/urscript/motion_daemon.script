@@ -1,0 +1,251 @@
+cmd = """
+# =============================================================================
+# motion_daemon.script  --  generalized URScript motion daemon for the UR5e
+# =============================================================================
+#
+# This program runs ON the UR controller (uploaded to script_port 30001). It
+# opens a socket back to the PC and runs two threads:
+#
+#   * send_state()    : streams the robot state to the PC at a fixed rate.
+#   * receive_action(): blocks on a command from the PC and dispatches a motion.
+#
+# All geometry below is in the UR base frame, with lengths in METERS and angles
+# in RADIANS (axis-angle / rotation-vector for orientation). There is NO hidden
+# negation here; world<->UR conversion lives on the PC side in RobotConfig.
+#
+# -----------------------------------------------------------------------------
+# NETWORK / PORTS
+# -----------------------------------------------------------------------------
+#   * The controller connects back to the PC at  pc_host : state_port.
+#       pc_host    = 192.168.0.120
+#       state_port = 30002
+#   * The PC uploads THIS script to the controller's script_port (30001).
+#
+# -----------------------------------------------------------------------------
+# COMMAND PROTOCOL  (PC -> daemon)
+# -----------------------------------------------------------------------------
+# The PC sends a fixed 10-float ASCII tuple as a string:
+#
+#       "(cmd, a0, a1, a2, a3, a4, a5, accel, vel, time)"
+#
+# The daemon reads it with socket_read_ascii_float(10, ...). NOTE: URScript's
+# socket_read_ascii_float returns a list whose element [0] is the COUNT of
+# values actually read, followed by the values themselves. So after a read of
+# 10 floats, the parsed payload is:
+#
+#       data[0]  = count (== 10 on success)
+#       data[1]  = cmd
+#       data[2]  = a0     data[3] = a1     data[4] = a2
+#       data[5]  = a3     data[6] = a4     data[7] = a5
+#       data[8]  = accel
+#       data[9]  = vel
+#       data[10] = time
+#
+# Command dispatch (on data[1] == cmd):
+#   cmd = 0  moveL : a0..a5 = pose x,y,z,rx,ry,rz (m,rad)
+#                    -> movel(p[a0..a5], accel, vel, time)   (full 6-DOF, no
+#                       hardcoded Z or rotation)
+#   cmd = 1  moveJ : a0..a5 = joints j0..j5 (rad)
+#                    -> movej([a0..a5], accel, vel, time)
+#   cmd = 2  stop  : a0 = deceleration (m/s^2); a1..a5 = 0
+#                    -> stopl(a0)
+#   cmd = 3  home  : payload all 0; daemon uses the configured home pose
+#                    -> movel(p[-0.06,0.25,0.115,0.0,-3.14,0.0], accel, vel, time)
+#   cmd = 4  force : a0..a2 = direction unit vector
+#                    a3      = target force (N)
+#                    a4      = stiffness
+#                    a5      = max travel (m)
+#                    -> force_mode(...)  (guarded branch, for the future
+#                       Robotiq FT 300; disabled by default until validated)
+#
+# -----------------------------------------------------------------------------
+# STATE STREAM  (daemon -> PC)
+# -----------------------------------------------------------------------------
+# Each frame is an ASCII string in EXACTLY this format (groups separated by
+# '_', each frame terminated by '+'):
+#
+#   p[x,y,z,rx,ry,rz]_p[vx,vy,vz,wx,wy,wz]_[j0,j1,j2,j3,j4,j5]_p[fx,fy,fz,tx,ty,tz]+
+#
+#   group 1 : p[...] TCP pose    [x, y, z, rx, ry, rz]      (m, rad)
+#   group 2 : p[...] TCP speed   [vx, vy, vz, wx, wy, wz]   (m/s, rad/s)
+#   group 3 :  [...] joints      [j0, j1, j2, j3, j4, j5]   (rad)
+#   group 4 : p[...] wrench      [fx, fy, fz, tx, ty, tz]   (N, Nm)
+#
+# The wrench group carries the REAL force from get_tcp_force(). On the current
+# hardware this is the controller's wrist-estimated TCP force; once the Robotiq
+# FT 300 is integrated through a URCap, get_tcp_force() reflects that sensor.
+# =============================================================================
+
+def UR_Control():
+
+    # ---- configured network endpoint (PC: pc_host : state_port) -------------
+    global PC_HOST    = "192.168.0.120"
+    global STATE_PORT = 30002
+
+    # ---- configured home pose (UR base frame, meters / radians) ------------
+    global HOME_POSE = p[-0.06, 0.25, 0.115, 0.0, -3.14, 0.0]
+
+    # ---- enable the cmd=4 force_mode branch only once the FT 300 is wired ---
+    # Kept False so an accidental cmd=4 cannot drive the arm into a surface
+    # before the force sensor + force_mode parameters are validated.
+    global FORCE_MODE_ENABLED = False
+
+    # ---- shared state ------------------------------------------------------
+    global frequency    = 0.0
+    global loop_time    = 0.0
+    global current_time = 0.0
+
+    # data[] holds the most recently received command tuple. Indices follow the
+    # socket_read_ascii_float convention: data[0] is the count, data[1] is cmd,
+    # data[2..7] are a0..a5, data[8]=accel, data[9]=vel, data[10]=time.
+    global data = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+    global ee_pose  = p[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]   # TCP pose  (m, rad)
+    global ee_speed = p[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]   # TCP speed (m/s, rad/s)
+    global joints   = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]    # joints    (rad)
+    global force    = p[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]   # wrench    (N, Nm)
+
+    # ------------------------------------------------------------------------
+    # control thread: executes ONE motion based on the latest command in data[]
+    # ------------------------------------------------------------------------
+    thread move_robot():
+        cmd   = data[1]
+        a0    = data[2]
+        a1    = data[3]
+        a2    = data[4]
+        a3    = data[5]
+        a4    = data[6]
+        a5    = data[7]
+        accel = data[8]
+        vel   = data[9]
+        t     = data[10]
+
+        # --- cmd = 0 : moveL, full 6-DOF pose (no hardcoded Z / rotation) ---
+        if (cmd == 0):
+            movel(p[a0, a1, a2, a3, a4, a5], accel, vel, t)
+        end
+
+        # --- cmd = 1 : moveJ, six joint targets (rad) ----------------------
+        if (cmd == 1):
+            movej([a0, a1, a2, a3, a4, a5], accel, vel, t)
+        end
+
+        # --- cmd = 2 : stop, decelerate at a0 (m/s^2) ----------------------
+        if (cmd == 2):
+            stopl(a0)
+        end
+
+        # --- cmd = 3 : home, move to the configured home pose --------------
+        if (cmd == 3):
+            movel(HOME_POSE, accel, vel, t)
+        end
+
+        # --- cmd = 4 : force_mode (guarded; for the future Robotiq FT 300) -
+        # a0..a2 = direction unit vector, a3 = target force (N),
+        # a4 = stiffness, a5 = max travel (m).
+        if (cmd == 4):
+            if (FORCE_MODE_ENABLED):
+                # Task frame at the current TCP; selection vector picks the
+                # axes the unit direction acts on; wrench applies a3 along it.
+                task_frame      = get_actual_tcp_pose()
+                selection_vector = [1, 1, 1, 0, 0, 0]
+                wrench_vector    = [a0 * a3, a1 * a3, a2 * a3, 0.0, 0.0, 0.0]
+                # type 2 == force frame fixed to the task frame.
+                f_type = 2
+                # Compliant-axis speed/displacement limits. a5 caps the travel
+                # along each compliant axis; a4 (stiffness) scales the limit.
+                limits = [a4, a4, a4, 0.17, 0.17, 0.17]
+                force_mode(task_frame, selection_vector, wrench_vector, f_type, limits)
+                # Drive along the compliant direction up to the max travel.
+                movel(pose_trans(task_frame, p[a0 * a5, a1 * a5, a2 * a5, 0.0, 0.0, 0.0]), accel, vel, t)
+                end_force_mode()
+            end
+        end
+
+        return False
+    end
+
+    # ------------------------------------------------------------------------
+    # state thread: stream the robot state to the PC in the documented format
+    # ------------------------------------------------------------------------
+    thread send_state():
+        while (True):
+            ee_pose  = get_actual_tcp_pose()
+            ee_speed = get_actual_tcp_speed()
+            joints   = get_actual_joint_positions()
+            # Real wrench at the TCP. Currently the controller's wrist estimate;
+            # the Robotiq FT 300 feeds this once integrated via URCap.
+            force    = get_tcp_force()
+
+            # Build: p[pose]_p[speed]_[joints]_p[wrench]+
+            state = ""
+            state = str_cat(state, ee_pose)
+            state = str_cat(state, "_")
+            state = str_cat(state, ee_speed)
+            state = str_cat(state, "_")
+            state = str_cat(state, joints)
+            state = str_cat(state, "_")
+            state = str_cat(state, force)
+            state = str_cat(state, "+")
+
+            socket_send_string(state, "daemon_socket")
+
+            sleep(0.002)
+        end
+    end
+
+    # ------------------------------------------------------------------------
+    # receive one 10-float command tuple from the PC (blocking)
+    # ------------------------------------------------------------------------
+    def receive_action():
+        data = socket_read_ascii_float(10, "daemon_socket", 1000)
+    end
+
+    # ------------------------------------------------------------------------
+    # client thread: open the socket, spawn workers, then loop on commands
+    # ------------------------------------------------------------------------
+    thread client():
+        if (not socket_open(PC_HOST, STATE_PORT, "daemon_socket")):
+            popup("Cant connect to PC state socket", "motion_daemon", error = True)
+            halt
+        end
+        local tic = current_time
+
+        send_state_thread = run send_state()
+        control_thread    = run move_robot()
+
+        while (True):
+            # Block until a full command tuple arrives, then (re)launch the
+            # control thread so the newest command pre-empts any in-flight move.
+            receive_action()
+            kill control_thread
+            control_thread = run move_robot()
+
+            toc       = current_time
+            loop_time = toc - tic
+            if (loop_time > 0.0):
+                frequency = 1.0 / loop_time
+            end
+            sync()
+            tic = current_time
+        end
+        return False
+    end
+
+    # ------------------------------------------------------------------------
+    # timer thread: maintain a monotonic clock for loop timing
+    # ------------------------------------------------------------------------
+    thread timer():
+        while (True):
+            current_time = current_time + get_steptime()
+            sync()
+        end
+        return False
+    end
+
+    # ------------------------------------------------------------------------
+    timer_thread  = run timer()
+    client_thread = run client()
+    join client_thread
+end
+"""
