@@ -9,12 +9,14 @@ forward-looking **Robotiq FT 300** force-control subsystem.
 
 ## Install / test
 
-Runtime needs only the Python standard library (Python 3.10+). For the test suite:
+Runtime needs only the Python standard library (Python 3.10+). Set up the
+environment with **conda**:
 
 ```bash
-uv venv --python 3.10 .venv
-uv pip install --python .venv/bin/python pytest
-.venv/bin/python -m pytest -q          # 129 passed
+conda create -n ur5e python=3.10
+conda activate ur5e
+pip install pytest          # test suite only
+python -m pytest -q         # 140 passed
 ```
 
 ## Quick start
@@ -33,6 +35,20 @@ with UR5eRobot(RobotConfig()) as robot:        # connects on enter, disconnects 
 socket so the daemon's state stream flows back. Everything is **meters, radians,
 UR base frame**; world↔UR conversion is explicit in `RobotConfig`.
 
+## Control panel (web GUI)
+
+A one-screen test harness for every feature — set the IP, connect, watch live
+state, and jog the TCP / joints:
+
+```bash
+python -m ur5e_control.gui          # then open http://127.0.0.1:8080
+```
+
+It binds to localhost only and starts in **dry-run** (no robot needed — you can
+exercise the whole UI offline). Flip the in-page switch to drive the real arm;
+the prominent **STOP** button sends a controlled stop. No third-party deps (it
+uses the standard-library `http.server`).
+
 ## Layout
 
 ```
@@ -45,6 +61,7 @@ ur5e_control/
   motion.py        MotionController: byte-exact command encoding, safety, convergence
   robot.py         UR5eRobot facade (the public API)
   force/           ForceSensor (Robotiq FT 300 / Mock) + ForceController  [forward-looking]
+  gui/             web control panel: stdlib http.server + index.html (python -m ur5e_control.gui)
   urscript/motion_daemon.script   generalized 6-DOF daemon (moveL/moveJ/stop/home/force)
   examples/        runnable dry-run / mock examples
 tests/             pytest suite (parsing, encoding, safety, control law via mocks)

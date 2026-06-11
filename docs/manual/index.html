@@ -200,7 +200,7 @@ footer{border-top:1px solid var(--border);padding:26px 24px;text-align:center;co
         <p lang="zh">透過 URScript socket 控制 Universal Robots UR5e 的乾淨、零依賴 Python 函式庫 — 完整 6 自由度的笛卡兒空間與關節空間運動,並預留 Robotiq FT 300 力量控制子系統。</p>
         <div class="pill-row">
           <span class="pill" lang="en"><b>0</b> runtime deps</span><span class="pill" lang="ja"><b>0</b> ランタイム依存</span><span class="pill" lang="zh">執行期依賴 <b>0</b></span>
-          <span class="pill" lang="en"><b>129</b> tests passing</span><span class="pill" lang="ja">テスト <b>129</b> 件パス</span><span class="pill" lang="zh"><b>129</b> 個測試通過</span>
+          <span class="pill" lang="en"><b>140</b> tests passing</span><span class="pill" lang="ja">テスト <b>140</b> 件パス</span><span class="pill" lang="zh"><b>140</b> 個測試通過</span>
           <span class="pill">Python <b>3.10+</b></span>
           <span class="pill" lang="en">meters · radians · <b>base frame</b></span><span class="pill" lang="ja">メートル · ラジアン · <b>ベース座標系</b></span><span class="pill" lang="zh">公尺 · 弧度 · <b>基座座標系</b></span>
         </div>
@@ -242,15 +242,20 @@ footer{border-top:1px solid var(--border);padding:26px 24px;text-align:center;co
         <p class="lead" lang="zh">執行期是純標準函式庫。只有測試套件需要虛擬環境。</p>
         <div class="code-cap"><span class="dot"></span>shell</div>
 <pre><code><span class="tok-c"># Runtime: no third-party packages required (socket, threading, dataclasses, abc).</span>
-<span class="tok-c"># For the test suite, create a venv (uv shown; venv/pip works too):</span>
-uv venv --python 3.10 .venv
-uv pip install --python .venv/bin/python pytest
+<span class="tok-c"># Create the environment with conda:</span>
+conda create -n ur5e python=3.10
+conda activate ur5e
+pip install pytest                 <span class="tok-c"># test suite only</span>
 
 <span class="tok-c"># Run the tests</span>
-.venv/bin/python -m pytest -q        <span class="tok-c"># -> 129 passed</span>
+python -m pytest -q                <span class="tok-c"># -> 140 passed</span>
 
-<span class="tok-c"># Import smoke test</span>
-.venv/bin/python -c <span class="tok-s">"from ur5e_control import UR5eRobot, RobotConfig, RobotState"</span></code></pre>
+<span class="tok-c"># Launch the web control panel (dry-run by default)</span>
+python -m ur5e_control.gui         <span class="tok-c"># then open http://127.0.0.1:8080</span></code></pre>
+        <div class="callout tip">
+          <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg></span>
+          <div class="body"><span lang="en"><b>Control panel:</b> <code>python -m ur5e_control.gui</code> opens a browser UI to set the IP, connect, watch live state, and jog the TCP / joints — a one-screen test harness. It starts in <b>dry-run</b> (no robot needed); flip the in-page switch to go live.</span><span lang="ja"><b>コントロールパネル:</b> <code>python -m ur5e_control.gui</code> でブラウザ UI が開き、IP 設定・接続・状態監視・TCP/関節のジョグができます（1 画面のテストハーネス）。<b>dry-run</b> で起動（ロボット不要）。画面内のスイッチで実機に切り替えます。</span><span lang="zh"><b>控制台:</b> <code>python -m ur5e_control.gui</code> 會開啟瀏覽器界面,可設定 IP、連線、看即時狀態、jog TCP / 關節 — 一個畫面測所有功能。預設 <b>dry-run</b>（不需機器人）;用畫面上的開關切到實機。</span></div>
+        </div>
         <div class="kfacts">
           <div class="kfact"><div class="v">30001</div><div class="l"><span lang="en">script_port (daemon upload)</span><span lang="ja">script_port（デーモン送信）</span><span lang="zh">script_port（daemon 上傳）</span></div></div>
           <div class="kfact"><div class="v">30002</div><div class="l"><span lang="en">state_port (PC ↔ daemon)</span><span lang="ja">state_port（PC ↔ デーモン）</span><span lang="zh">state_port（PC ↔ daemon）</span></div></div>
