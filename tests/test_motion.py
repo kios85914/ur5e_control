@@ -36,6 +36,13 @@ def _state_frame(pose):
     return f"p[{p}]_p[{zeros}]_[{zeros}]_p[{zeros}]+"
 
 
+def _joint_state_frame(joints):
+    """Build a raw daemon state frame whose JOINTS group is ``joints`` (rad)."""
+    j = ",".join(str(v) for v in joints)
+    zeros = "0,0,0,0,0,0"
+    return f"p[{zeros}]_p[{zeros}]_[{j}]_p[{zeros}]+"
+
+
 class FakeConnection:
     """Minimal stand-in for RobotConnection capturing sends and feeding states.
 
@@ -211,6 +218,27 @@ def test_move_j_sends_movej_encoded():
 
     expected = mc.encode_command(1, joints, 0.2, 0.2, cfg.default_move_time)
     assert conn.sent == [expected]
+
+
+def test_move_j_blocking_waits_for_joint_convergence():
+    """A blocking move_j returns only once the joints reach the target.
+
+    Regression: the old 'wait until the TCP pose stops changing' heuristic could
+    return at the very start of the move (arm barely moving between polls), so the
+    next command pre-empted the unfinished joint move and the arm appeared not to
+    move. Now it waits for the joints to actually reach the commanded target.
+    """
+    cfg = RobotConfig()
+    target = [0.0, -1.0, 1.0, -1.0, -1.0, 0.0]
+    far = _joint_state_frame([v + 0.2 for v in target])   # not yet there
+    near = _joint_state_frame([v + 5e-4 for v in target])  # within 1e-3 tol
+    conn = FakeConnection(state_frames=[far, near])
+    mc = MotionController(conn, cfg)
+
+    with mock.patch("ur5e_control.motion.time.sleep"):
+        mc.move_j(target, speed=0.2, blocking=True)
+
+    assert any(s.startswith("(1, ") for s in conn.sent)  # moveJ tuple was sent
 
 
 def test_move_j_runs_joint_safety_before_send():

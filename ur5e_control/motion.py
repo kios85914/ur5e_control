@@ -228,9 +228,8 @@ class MotionController:
                 Clamped to ``config.max_speed``; must be > 0.
             accel: Joint acceleration in rad/s^2. ``None`` uses
                 ``config.default_accel``.
-            blocking: If ``True``, poll state until the TCP pose has settled (the
-                joint move has effectively stopped) within
-                ``config.convergence_tol``.
+            blocking: If ``True``, poll state until every joint is within
+                ``config.convergence_tol`` of the commanded target.
 
         Raises:
             JointLimitViolation: If ``joints`` is malformed or any joint is out of
@@ -251,9 +250,10 @@ class MotionController:
         self._conn.send(msg)
 
         if blocking:
-            # After a joint move we don't know the target TCP pose a priori, so
-            # wait for the TCP pose to settle (successive states stop changing).
-            self._await_settle()
+            # Wait until the joints actually reach the commanded target (the
+            # state stream carries joint angles). This blocks for the whole move,
+            # so the next command can't pre-empt an unfinished joint move.
+            self._await_joint_convergence(joints)
 
     # ------------------------------------------------------------------
     # Stop / home
@@ -369,20 +369,25 @@ class MotionController:
             f"(tol={tol} m/rad)"
         )
 
-    def _await_settle(self) -> None:
-        """Block until the TCP pose stops changing (within ``convergence_tol``).
+    def _await_joint_convergence(self, target_joints: Sequence[float]) -> None:
+        """Block until the joints are within ``convergence_tol`` of ``target_joints``.
 
-        Used for joint moves, where the resulting TCP pose is not known ahead of
-        time. Polls successive state frames and returns once two consecutive
-        parsed poses differ by less than :attr:`RobotConfig.convergence_tol` on
-        every component (the motion has effectively settled).
+        The state stream carries the actual joint angles, and a joint move's
+        target IS known, so (just like :meth:`_await_convergence` for Cartesian
+        moves) we wait until every joint reaches its commanded value. This is
+        robust at the *start* of a move: an earlier "wait until the pose stops
+        changing" heuristic could return immediately because the arm had barely
+        begun accelerating, letting the next command pre-empt the unfinished
+        joint move.
+
+        Args:
+            target_joints: Commanded joint angles ``[j0..j5]`` in radians.
 
         Raises:
-            TimeoutError: If the pose does not settle within ``_MAX_POLL_ITERS``
+            TimeoutError: If the joints do not converge within ``_MAX_POLL_ITERS``
                 poll iterations.
         """
         tol = self._config.convergence_tol
-        prev: Optional[List[float]] = None
         for _ in range(_MAX_POLL_ITERS):
             raw = self._conn.latest_state()
             if raw:
@@ -391,16 +396,14 @@ class MotionController:
                 except ValueError:
                     state = None
                 if state is not None:
-                    if prev is not None:
-                        delta = max(
-                            abs(state.tcp_pose[i] - prev[i])
-                            for i in range(_PAYLOAD_LEN)
-                        )
-                        if delta < tol:
-                            return
-                    prev = list(state.tcp_pose)
+                    delta = max(
+                        abs(state.joints[i] - target_joints[i])
+                        for i in range(_PAYLOAD_LEN)
+                    )
+                    if delta < tol:
+                        return
             time.sleep(_POLL_INTERVAL_S)
         raise TimeoutError(
-            f"joint move did not settle within {_MAX_POLL_ITERS} polls "
+            f"joint move did not converge within {_MAX_POLL_ITERS} polls "
             f"(tol={tol} rad)"
         )
