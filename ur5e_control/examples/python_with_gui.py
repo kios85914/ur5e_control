@@ -23,7 +23,6 @@ if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
 from ur5e_control import RobotConfig, UR5eRobot
-from ur5e_control.gui import serve_in_background
 
 
 def main(dry_run: bool = True, hold: bool = False) -> None:
@@ -34,8 +33,8 @@ def main(dry_run: bool = True, hold: bool = False) -> None:
     robot = UR5eRobot(config, dry_run=dry_run)
     robot.connect()
     try:
-        # Attach the monitor GUI to THIS robot (background thread).
-        serve_in_background(robot)  # http://127.0.0.1:8080  (Python control mode)
+        # One call attaches the monitor GUI to THIS robot (background thread).
+        robot.serve_gui()  # http://127.0.0.1:8080  (Python control mode)
         if not dry_run:
             time.sleep(0.5)
 

@@ -105,6 +105,35 @@ class UR5eRobot:
         """
         self._connection.close()
 
+    def serve_gui(self, host: str = "127.0.0.1", port: int = 8080):
+        """Open the browser monitor/control panel attached to this robot.
+
+        One call, no extra wiring — keep your control code clean::
+
+            with UR5eRobot(RobotConfig()) as robot:
+                robot.serve_gui()                 # http://127.0.0.1:8080
+                robot.move_l([0.1, 0.3, 0.2, 0, -3.14, 0])   # the GUI shows it live
+
+        The GUI runs on a background thread (this returns immediately) and shares
+        *this* robot, so your Python code keeps driving while the browser shows
+        live state. It opens in **Python control mode**: the browser's
+        move/jog/home are locked to a live monitor (so a human can't fight your
+        script) while **STOP always works**; flip to "GUI control" in the page to
+        jog manually.
+
+        Args:
+            host: Bind host (default localhost).
+            port: Bind port (default 8080).
+
+        Returns:
+            The running ``ThreadingHTTPServer`` (call ``.shutdown()`` to stop).
+        """
+        # Lazy import: ur5e_control.gui.server imports UR5eRobot, so importing it
+        # at module load time would create a cycle.
+        from .gui.server import serve_in_background
+
+        return serve_in_background(self, host=host, port=port)
+
     # ------------------------------------------------------------------
     # Motion (delegated to MotionController)
     # ------------------------------------------------------------------

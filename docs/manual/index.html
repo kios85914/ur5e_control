@@ -533,19 +533,18 @@ python -m ur5e_control.gui         <span class="tok-c"># then open http://127.0.
     <span class="tok-f">print</span>(<span class="tok-s">f"contact force Z = {fz:.1f} N"</span>)</code></pre>
 
         <h3><span lang="en">Pure Python, and Python + live GUI</span><span lang="ja">純 Python、および Python + ライブ GUI</span><span lang="zh">純 Python,以及 Python + 即時 GUI</span></h3>
-        <p lang="en">Two runnable tutorials. <code>python_control</code> drives everything from Python (no GUI). <code>python_with_gui</code> attaches the browser monitor to <em>your</em> robot via <code>serve_in_background(robot)</code> — same process, same socket — so your script drives while the GUI shows live state.</p>
-        <p lang="ja">2 つの実行可能チュートリアル。<code>python_control</code> は全て Python から制御(GUI なし)。<code>python_with_gui</code> は <code>serve_in_background(robot)</code> で<em>あなたの</em>robot にブラウザモニタを接続(同一プロセス・同一ソケット)—— スクリプトが制御し、GUI はライブ状態を表示。</p>
-        <p lang="zh">兩支可執行教學。<code>python_control</code> 全部用 Python 控制(不開 GUI)。<code>python_with_gui</code> 用 <code>serve_in_background(robot)</code> 把瀏覽器監看接到<em>你的</em> robot(同進程、同 socket)—— 你的腳本控制、GUI 顯示即時狀態。</p>
+        <p lang="en">Two runnable tutorials. <code>python_control</code> drives everything from Python (no GUI). <code>python_with_gui</code> attaches the browser monitor to <em>your</em> robot with a single call, <code>robot.serve_gui()</code> — same process, same socket — so your script drives while the GUI shows live state.</p>
+        <p lang="ja">2 つの実行可能チュートリアル。<code>python_control</code> は全て Python から制御(GUI なし)。<code>python_with_gui</code> は <code>robot.serve_gui()</code> の 1 行で<em>あなたの</em>robot にブラウザモニタを接続(同一プロセス・同一ソケット)—— スクリプトが制御し、GUI はライブ状態を表示。</p>
+        <p lang="zh">兩支可執行教學。<code>python_control</code> 全部用 Python 控制(不開 GUI)。<code>python_with_gui</code> 用一行 <code>robot.serve_gui()</code> 把瀏覽器監看接到<em>你的</em> robot(同進程、同 socket)—— 你的腳本控制、GUI 顯示即時狀態。</p>
 <pre><code><span class="tok-c"># pure Python, no GUI</span>
 python -m ur5e_control.examples.python_control
 
 <span class="tok-c"># Python drives + browser shows live state</span>
 python -m ur5e_control.examples.python_with_gui     <span class="tok-c"># open http://127.0.0.1:8080</span></code></pre>
 <pre><code><span class="tok-k">from</span> ur5e_control <span class="tok-k">import</span> UR5eRobot, RobotConfig
-<span class="tok-k">from</span> ur5e_control.gui <span class="tok-k">import</span> serve_in_background
 
 <span class="tok-k">with</span> UR5eRobot(RobotConfig()) <span class="tok-k">as</span> robot:
-    <span class="tok-f">serve_in_background</span>(robot)        <span class="tok-c"># monitor at http://127.0.0.1:8080</span>
+    robot.<span class="tok-f">serve_gui</span>()                  <span class="tok-c"># one call -> monitor at http://127.0.0.1:8080</span>
     robot.<span class="tok-f">move_l</span>([<span class="tok-n">0.1</span>, <span class="tok-n">0.3</span>, <span class="tok-n">0.2</span>, <span class="tok-n">0</span>, <span class="tok-n">-3.14</span>, <span class="tok-n">0</span>])  <span class="tok-c"># GUI shows it live</span></code></pre>
         <div class="callout info">
           <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>

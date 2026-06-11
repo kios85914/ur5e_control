@@ -155,6 +155,21 @@ def test_serve_in_background_attaches_and_serves():
         httpd.shutdown()
 
 
+def test_robot_serve_gui_one_call_attaches():
+    """UR5eRobot.serve_gui() opens the GUI attached to itself, no extra wiring."""
+    robot = UR5eRobot(RobotConfig(), dry_run=True)
+    robot.connect()
+    httpd = robot.serve_gui(port=0)
+    try:
+        host, port = httpd.server_address
+        with urllib.request.urlopen(f"http://{host}:{port}/api/status", timeout=3) as r:
+            s = json.loads(r.read())
+        assert s["attached"] is True
+        assert s["mode"] == "python"
+    finally:
+        httpd.shutdown()
+
+
 # --------------------------------------------------------------------------
 # HTTP layer
 # --------------------------------------------------------------------------

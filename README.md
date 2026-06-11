@@ -56,10 +56,9 @@ browser displays:
 
 ```python
 from ur5e_control import UR5eRobot, RobotConfig
-from ur5e_control.gui import serve_in_background
 
 with UR5eRobot(RobotConfig()) as robot:
-    serve_in_background(robot)            # http://127.0.0.1:8080 (Python control mode)
+    robot.serve_gui()                     # one call -> http://127.0.0.1:8080
     robot.move_l([0.1, 0.3, 0.2, 0, -3.14, 0])   # the GUI shows it live
 ```
 
