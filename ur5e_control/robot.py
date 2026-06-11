@@ -71,12 +71,19 @@ class UR5eRobot:
             present. Defaults to ``False`` (talk to the real controller).
     """
 
-    def __init__(self, config: RobotConfig = RobotConfig(), dry_run: bool = False) -> None:
+    def __init__(
+        self,
+        config: RobotConfig = RobotConfig(),
+        dry_run: bool = False,
+        connection=None,
+    ) -> None:
         self.config = config
         self.dry_run = dry_run
-        # Compose the transport and motion layers. No sockets are opened yet;
-        # RobotConnection only binds/listens at start() (called by connect()).
-        self._connection = RobotConnection(config, dry_run=dry_run)
+        # An injected transport (e.g. ur5e_control.sim.SimConnection) replaces the
+        # real socket connection AND suppresses the URScript daemon upload, so the
+        # whole library can drive a simulator. When None, talk to the real robot.
+        self._injected = connection is not None
+        self._connection = connection if self._injected else RobotConnection(config, dry_run=dry_run)
         self._motion = MotionController(self._connection, config)
         self._force = None  # lazily built ForceController (see the `force` property)
 
@@ -95,8 +102,9 @@ class UR5eRobot:
         state stream is received. The upload must precede the connection start so
         the daemon is running before it tries to connect back to the PC.
         """
-        script = render_daemon(self.config)
-        send_script(script, self.config, dry_run=self.dry_run)
+        # An injected transport (sim) runs no URScript -- just start it.
+        if not self._injected:
+            send_script(render_daemon(self.config), self.config, dry_run=self.dry_run)
         self._connection.start()
 
     def disconnect(self) -> None:

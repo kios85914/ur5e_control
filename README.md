@@ -105,6 +105,39 @@ on the controller's `force_mode` and stay **gated** (`FORCE_MODE_ENABLED=False`)
 until validated on the robot — a wrong `force_mode` is a real safety hazard. The
 daemon exits force_mode **cooperatively** (never hard-killed mid-compliance).
 
+## Simulation (MuJoCo)
+
+Test the library on the PC with **no robot** — the *same* `MotionController` /
+`ForceController` / `guarded_move` code drives a MuJoCo sim of the official
+[mujoco_menagerie](https://github.com/google-deepmind/mujoco_menagerie) UR5e
+(accurate kinematics/inertia/meshes) with a table and a wrist force/torque
+sensor. The sim transport is injected via the existing `connection` hook:
+
+```bash
+pip install mujoco            # or: uv pip install mujoco
+python -m ur5e_control.examples.sim_guarded_move          # headless
+python -m ur5e_control.examples.sim_guarded_move --view   # MuJoCo viewer
+```
+
+```python
+from ur5e_control import UR5eRobot, RobotConfig
+from ur5e_control.sim import SimConnection
+
+robot = UR5eRobot(RobotConfig(), connection=SimConnection(viewer=True))
+with robot:
+    robot.wait_until_connected()
+    contact = robot.force.guarded_move([0, 0, -1], speed=0.03,
+                                       force_threshold_n=20.0, max_travel=0.15)
+    print("contact wrench (base frame):", contact)
+```
+
+**Scope:** MuJoCo doesn't run URScript — `moveL/moveJ/speedl` are reproduced by a
+Jacobian controller and the force-mode behaviors by a sim admittance law, so this
+validates the **control logic + contact physics**, not the shipped
+`motion_daemon.script` (use [URSim](https://hub.docker.com/r/universalrobots/ursim_e-series)
+for daemon fidelity). TCP pose and the contact wrench are reported in the **UR
+base frame**, matching the real robot.
+
 ## Layout
 
 ```
@@ -120,6 +153,7 @@ ur5e_control/
                      guarded_move (move-until-force, stop & hold) — ENABLED;
                      maintain_force / hold_compliant (force_mode) — gated, pending HW
   gui/             web control panel: stdlib http.server + index.html (python -m ur5e_control.gui)
+  sim/             MuJoCo backend + SimConnection + vendored menagerie UR5e scene
   urscript/motion_daemon.script   generalized 6-DOF daemon (moveL/moveJ/stop/home/force)
   examples/        runnable dry-run / mock examples
 tests/             pytest suite (parsing, encoding, safety, control law via mocks)

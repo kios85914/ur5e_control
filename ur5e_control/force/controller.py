@@ -259,7 +259,10 @@ class ForceController:
         elapsed = 0.0
         while elapsed <= max_time:
             wrench = self._sensor.read()
-            if self._project(wrench, unit) >= force_threshold_n:
+            # Use the |force| along the axis: a contact reaction opposes the motion
+            # so the signed projection can be negative; magnitude is sign-convention
+            # robust (works whether the wrench is env-on-robot or robot-on-env).
+            if abs(self._project(wrench, unit)) >= force_threshold_n:
                 self._motion.stop()
                 return list(wrench)
             time.sleep(poll_interval)

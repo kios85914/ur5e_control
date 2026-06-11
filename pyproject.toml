@@ -7,6 +7,7 @@ dependencies = []
 
 [project.optional-dependencies]
 test = ["pytest"]
+sim = ["mujoco"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -14,8 +15,9 @@ pythonpath = ["."]
 addopts = "-q"
 
 [tool.setuptools]
-packages = ["ur5e_control", "ur5e_control.force", "ur5e_control.gui"]
+packages = ["ur5e_control", "ur5e_control.force", "ur5e_control.gui", "ur5e_control.sim"]
 
 [tool.setuptools.package-data]
 "ur5e_control.gui" = ["index.html"]
 "ur5e_control.urscript" = ["*.script"]
+"ur5e_control.sim" = ["assets/ur5e/*.xml", "assets/ur5e/assets/*.obj", "assets/ur5e/*"]
