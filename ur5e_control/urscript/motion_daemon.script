@@ -100,7 +100,11 @@ def UR_Control():
     # data[] holds the most recently received command tuple. Indices follow the
     # socket_read_ascii_float convention: data[0] is the count, data[1] is cmd,
     # data[2..7] are a0..a5, data[8]=accel, data[9]=vel, data[10]=time.
-    global data = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    # IMPORTANT: data[1] (cmd) is initialised to -1 -- a no-op sentinel -- so the
+    # control thread launched at startup does NOTHING until a real command
+    # arrives. (Initialising cmd to 0 would mean "moveL" and the all-zero accel/
+    # vel would raise "movel: Arguments 'a' and 'v' must be positive".)
+    global data = [0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
     global ee_pose  = p[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]   # TCP pose  (m, rad)
     global ee_speed = p[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]   # TCP speed (m/s, rad/s)
