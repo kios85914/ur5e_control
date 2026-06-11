@@ -84,6 +84,17 @@ def main(dry_run: bool = True) -> None:
     blocking = not dry_run
 
     with robot:  # connect() on entry, disconnect() on exit (even on error)
+        # Confirm the robot actually came up (daemon dialed back) before moving.
+        if robot.wait_until_connected(timeout=5.0):
+            print("[OK] robot connected — daemon dialed back; state is streaming.")
+        elif dry_run:
+            print("[dry-run] no real robot connected (preview only).")
+        else:
+            print(
+                "[!] robot NOT connected within 5 s — check Remote Control mode, "
+                f"controller_ip / pc_host, cable/IP, firewall on port {config.state_port}."
+            )
+
         print(f"\n1) move_l to world pose {_DEMO_POSE_WORLD} (m, rad)")
         robot.move_l(_DEMO_POSE_WORLD, blocking=blocking)
 

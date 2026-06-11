@@ -65,8 +65,18 @@ def main(dry_run: bool = True, gui: bool = False) -> None:
         if gui:
             robot.serve_gui()  # live monitor at http://127.0.0.1:8080 (optional)
             print("GUI monitor: http://127.0.0.1:8080\n")
-        if not dry_run:
-            time.sleep(0.5)  # give the daemon a moment to start streaming state
+
+        # Confirm the robot actually came up (daemon dialed back) before moving.
+        if robot.wait_until_connected(timeout=5.0):
+            print("[OK] robot connected — daemon dialed back; state is streaming.\n")
+        elif dry_run:
+            print("[dry-run] no real robot connected (preview only).\n")
+        else:
+            print(
+                "[!] robot NOT connected within 5 s. Check: teach-pendant Remote "
+                "Control mode; controller_ip / pc_host; cable & static IP; and that "
+                f"the PC firewall allows the state port ({config.state_port}).\n"
+            )
 
         print("1) current state")
         show_state(robot)

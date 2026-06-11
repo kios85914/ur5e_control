@@ -35,8 +35,17 @@ def main(dry_run: bool = True, hold: bool = False) -> None:
     try:
         # One call attaches the monitor GUI to THIS robot (background thread).
         robot.serve_gui()  # http://127.0.0.1:8080  (Python control mode)
-        if not dry_run:
-            time.sleep(0.5)
+
+        # Confirm the robot actually came up (daemon dialed back) before moving.
+        if robot.wait_until_connected(timeout=5.0):
+            print("[OK] robot connected — daemon dialed back; state is streaming.")
+        elif dry_run:
+            print("[dry-run] no real robot connected (preview only).")
+        else:
+            print(
+                "[!] robot NOT connected within 5 s. Check Remote Control mode, "
+                f"controller_ip / pc_host, cable/IP, and firewall on port {config.state_port}."
+            )
 
         # ---- your control code; the GUI mirrors it live ----
         print("driving from Python (watch the browser)…")

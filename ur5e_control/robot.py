@@ -41,6 +41,7 @@ Typical use::
 
 from __future__ import annotations
 
+import time
 from typing import Optional, Sequence
 
 from .config import RobotConfig
@@ -209,6 +210,38 @@ class UR5eRobot:
         listening, but the daemon on the controller may not have dialed back yet.
         Always ``False`` in ``dry_run`` mode. Useful for a UI status indicator.
         """
+        return self._connection.is_connected()
+
+    def wait_until_connected(self, timeout: float = 5.0, poll: float = 0.1) -> bool:
+        """Block until the daemon has connected back to the PC, or ``timeout``.
+
+        :meth:`connect` returns as soon as the PC is *listening*; the daemon on
+        the controller then dials back a moment later. Call this to wait for that
+        callback so you can confirm the robot is really up before commanding it::
+
+            robot.connect()
+            if robot.wait_until_connected():
+                print("robot connected")
+
+        Returns ``True`` once :meth:`is_daemon_connected` is true. In ``dry_run``
+        there is no real daemon, so this returns ``False`` immediately (check
+        ``robot.dry_run`` to tell that apart from a real timeout). Returns
+        ``False`` if the daemon has not connected within ``timeout`` seconds.
+
+        Args:
+            timeout: Max seconds to wait for the daemon callback.
+            poll: Seconds between checks.
+
+        Returns:
+            ``True`` if the daemon connected within the timeout, else ``False``.
+        """
+        if self.dry_run:
+            return False
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if self._connection.is_connected():
+                return True
+            time.sleep(poll)
         return self._connection.is_connected()
 
     def get_state(self) -> RobotState:

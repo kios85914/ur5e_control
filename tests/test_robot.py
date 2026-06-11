@@ -206,6 +206,29 @@ def test_stop_delegates_to_motion_controller(patched):
 
 
 # ---------------------------------------------------------------------------
+# wait_until_connected
+# ---------------------------------------------------------------------------
+def test_wait_until_connected_true_when_daemon_present(patched):
+    """Returns True once the connection reports the daemon has dialed back."""
+    patched.connection.is_connected.return_value = True
+    robot = UR5eRobot()  # dry_run False
+    assert robot.wait_until_connected(timeout=0.1) is True
+
+
+def test_wait_until_connected_false_in_dry_run():
+    """In dry-run there is no daemon; returns False immediately (no sockets)."""
+    robot = UR5eRobot(RobotConfig(), dry_run=True)
+    assert robot.wait_until_connected(timeout=0.1) is False
+
+
+def test_wait_until_connected_times_out(patched):
+    """Returns False if the daemon never connects within the timeout."""
+    patched.connection.is_connected.return_value = False
+    robot = UR5eRobot()
+    assert robot.wait_until_connected(timeout=0.02, poll=0.005) is False
+
+
+# ---------------------------------------------------------------------------
 # get_state
 # ---------------------------------------------------------------------------
 def test_get_state_parses_latest_connection_frame(patched):
