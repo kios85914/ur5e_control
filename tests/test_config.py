@@ -44,7 +44,7 @@ def test_world_to_ur_does_not_mutate_input():
 def test_defaults_match_locked_values():
     """All RobotConfig defaults equal the locked interface values."""
     cfg = RobotConfig()
-    assert cfg.controller_ip == "192.168.0.135"
+    assert cfg.controller_ip == "192.168.0.137"
     assert cfg.script_port == 30001
     assert cfg.pc_host == "192.168.0.120"
     assert cfg.state_port == 30002

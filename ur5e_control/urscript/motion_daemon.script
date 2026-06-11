@@ -16,8 +16,8 @@
 # NETWORK / PORTS
 # -----------------------------------------------------------------------------
 #   * The controller connects back to the PC at  pc_host : state_port.
-#       pc_host    = 192.168.0.120
-#       state_port = 30002
+#       pc_host / state_port are injected from RobotConfig by
+#       script_sender.render_daemon() at upload time (placeholders below).
 #   * The PC uploads THIS script to the controller's script_port (30001).
 #
 # -----------------------------------------------------------------------------
@@ -78,11 +78,14 @@
 def UR_Control():
 
     # ---- configured network endpoint (PC: pc_host : state_port) -------------
-    global PC_HOST    = "192.168.0.120"
-    global STATE_PORT = 30002
+    # These placeholders are filled by script_sender.render_daemon() from the
+    # RobotConfig at upload time, so they always match the library's pc_host /
+    # state_port / home_pose (one source of truth -- do not hardcode here).
+    global PC_HOST    = "{{PC_HOST}}"
+    global STATE_PORT = {{STATE_PORT}}
 
     # ---- configured home pose (UR base frame, meters / radians) ------------
-    global HOME_POSE = p[-0.06, 0.25, 0.115, 0.0, -3.14, 0.0]
+    global HOME_POSE = {{HOME_POSE}}
 
     # ---- enable the cmd=4 force_mode branch only once the FT 300 is wired ---
     # Kept False so an accidental cmd=4 cannot drive the arm into a surface

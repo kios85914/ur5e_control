@@ -80,7 +80,7 @@ class RobotConfig:
             UR base frame.
     """
 
-    controller_ip: str = "192.168.0.135"
+    controller_ip: str = "192.168.0.137"
     script_port: int = 30001
     pc_host: str = "192.168.0.120"
     state_port: int = 30002

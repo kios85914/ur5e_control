@@ -11,7 +11,34 @@ from unittest import mock
 import pytest
 
 from ur5e_control.config import RobotConfig
-from ur5e_control.script_sender import DEFAULT_SCRIPT_PATH, load_script, send_script
+from ur5e_control.script_sender import (
+    DEFAULT_SCRIPT_PATH,
+    load_script,
+    render_daemon,
+    send_script,
+)
+
+
+# ---------------------------------------------------------------------------
+# render_daemon — config injected into the packaged daemon template
+# ---------------------------------------------------------------------------
+def test_render_daemon_fills_placeholders_from_config():
+    cfg = RobotConfig(pc_host="10.1.2.3", state_port=40404)
+    out = render_daemon(cfg).decode("ascii")
+    assert b"{{" not in out.encode()  # no placeholder left unfilled
+    assert 'PC_HOST    = "10.1.2.3"' in out
+    assert "STATE_PORT = 40404" in out
+    # home pose rendered as a URScript pose literal from config.home_pose
+    assert "global HOME_POSE = p[" in out
+    assert repr(float(cfg.home_pose[0])) in out
+
+
+def test_render_daemon_default_config_is_valid_urscript_shape():
+    out = render_daemon().decode("ascii")
+    # the templated daemon must still be raw URScript (no Python wrapper)
+    assert out.lstrip().startswith("#")
+    assert "def UR_Control():" in out
+    assert "{{" not in out
 
 
 # ---------------------------------------------------------------------------

@@ -25,7 +25,7 @@ from pathlib import Path
 
 from ur5e_control.config import RobotConfig
 
-__all__ = ["DEFAULT_SCRIPT_PATH", "load_script", "send_script"]
+__all__ = ["DEFAULT_SCRIPT_PATH", "load_script", "render_daemon", "send_script"]
 
 # Path to the packaged URScript daemon, resolved relative to this file so it
 # works regardless of the current working directory. The daemon file itself is
@@ -55,6 +55,43 @@ def load_script(path: str | Path = DEFAULT_SCRIPT_PATH) -> bytes:
             :class:`FileNotFoundError`).
     """
     return Path(path).read_bytes()
+
+
+def render_daemon(
+    config: RobotConfig = RobotConfig(),
+    path: str | Path = DEFAULT_SCRIPT_PATH,
+) -> bytes:
+    """Render the daemon template, injecting the PC endpoint and home pose.
+
+    The packaged ``motion_daemon.script`` is a template: the address the daemon
+    dials **back** to (the PC) and the configured home pose are placeholders, so
+    they always agree with the :class:`RobotConfig` the rest of the library uses
+    (no second place to keep in sync). The substitutions are:
+
+    * ``{{PC_HOST}}``    -> ``config.pc_host``    (where the daemon connects back)
+    * ``{{STATE_PORT}}`` -> ``config.state_port``
+    * ``{{HOME_POSE}}``  -> ``p[x, y, z, rx, ry, rz]`` from ``config.home_pose``
+
+    Note ``controller_ip``/``script_port`` are *not* in the daemon — those are
+    where the PC uploads *to* (see :func:`send_script`), not where the daemon
+    connects back.
+
+    Args:
+        config: Configuration supplying ``pc_host``, ``state_port``, ``home_pose``.
+        path: Daemon template path. Defaults to the packaged daemon.
+
+    Returns:
+        Ready-to-upload URScript as ``bytes`` with all placeholders filled.
+    """
+    text = Path(path).read_text(encoding="utf-8")
+    home = ", ".join(repr(float(v)) for v in config.home_pose)
+    for token, value in (
+        ("{{PC_HOST}}", str(config.pc_host)),
+        ("{{STATE_PORT}}", str(int(config.state_port))),
+        ("{{HOME_POSE}}", f"p[{home}]"),
+    ):
+        text = text.replace(token, value)
+    return text.encode("utf-8")
 
 
 def send_script(

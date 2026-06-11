@@ -27,7 +27,7 @@ field has a default, so `RobotConfig()` is fully usable out of the box.
 
 | Field | Type | Default | Units / meaning |
 |---|---|---|---|
-| `controller_ip` | `str` | `"192.168.0.135"` | IP of the UR controller (daemon host). |
+| `controller_ip` | `str` | `"192.168.0.137"` | IP of the UR controller (daemon host). |
 | `script_port` | `int` | `30001` | TCP port the controller listens on for URScript. |
 | `pc_host` | `str` | `"192.168.0.120"` | IP of this PC, advertised to the daemon for the state-stream callback. |
 | `state_port` | `int` | `30002` | TCP port on this PC that receives the daemon state stream. |

@@ -34,25 +34,25 @@ def patched(monkeypatch):
     """Patch script_sender, RobotConnection, and MotionController in robot.py.
 
     Returns a namespace of mocks so each test can assert on the exact calls the
-    facade makes. ``load_script``/``send_script`` are functions; ``RobotConnection``
+    facade makes. ``render_daemon``/``send_script`` are functions; ``RobotConnection``
     and ``MotionController`` are classes whose instances are the ``.return_value``
     of the patched class mock.
     """
     import ur5e_control.robot as robot_mod
 
-    load_script = mock.Mock(name="load_script", return_value=b"SCRIPT-BYTES")
+    render_daemon = mock.Mock(name="render_daemon", return_value=b"SCRIPT-BYTES")
     send_script = mock.Mock(name="send_script")
     connection_cls = mock.Mock(name="RobotConnection")
     motion_cls = mock.Mock(name="MotionController")
 
-    monkeypatch.setattr(robot_mod, "load_script", load_script)
+    monkeypatch.setattr(robot_mod, "render_daemon", render_daemon)
     monkeypatch.setattr(robot_mod, "send_script", send_script)
     monkeypatch.setattr(robot_mod, "RobotConnection", connection_cls)
     monkeypatch.setattr(robot_mod, "MotionController", motion_cls)
 
     return mock.Mock(
         robot_mod=robot_mod,
-        load_script=load_script,
+        render_daemon=render_daemon,
         send_script=send_script,
         connection_cls=connection_cls,
         connection=connection_cls.return_value,
@@ -85,8 +85,8 @@ def test_connect_uploads_daemon_then_starts_connection(patched):
     robot = UR5eRobot()
     robot.connect()
 
-    # The packaged daemon script is loaded and uploaded to the controller.
-    patched.load_script.assert_called_once_with()
+    # The daemon is rendered from config and uploaded to the controller.
+    patched.render_daemon.assert_called_once_with(robot.config)
     patched.send_script.assert_called_once()
     sent_args, sent_kwargs = patched.send_script.call_args
     assert sent_args[0] == b"SCRIPT-BYTES"

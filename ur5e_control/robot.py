@@ -46,7 +46,7 @@ from typing import Optional, Sequence
 from .config import RobotConfig
 from .connection import RobotConnection
 from .motion import MotionController
-from .script_sender import load_script, send_script
+from .script_sender import render_daemon, send_script
 from .state import RobotState, parse_state
 
 __all__ = ["UR5eRobot"]
@@ -84,15 +84,16 @@ class UR5eRobot:
     def connect(self) -> None:
         """Upload the motion daemon, then start the state connection.
 
-        Reads the packaged URScript daemon with
-        :func:`~ur5e_control.script_sender.load_script`, uploads it to the
-        controller with :func:`~ur5e_control.script_sender.send_script` (which
+        Renders the packaged URScript daemon with
+        :func:`~ur5e_control.script_sender.render_daemon` (injecting
+        ``pc_host``/``state_port``/``home_pose`` from the config), uploads it to
+        the controller with :func:`~ur5e_control.script_sender.send_script` (which
         sends it to ``config.controller_ip:config.script_port``), and then starts
         the :class:`~ur5e_control.connection.RobotConnection` so the daemon's
         state stream is received. The upload must precede the connection start so
         the daemon is running before it tries to connect back to the PC.
         """
-        script = load_script()
+        script = render_daemon(self.config)
         send_script(script, self.config, dry_run=self.dry_run)
         self._connection.start()
 
