@@ -36,10 +36,10 @@ field has a default, so `RobotConfig()` is fully usable out of the box.
 | `default_accel` | `float` | `0.1` | Default Cartesian/joint acceleration (m/s^2 or rad/s^2). |
 | `default_move_time` | `float` | `2.0` | Default blend/move duration (s). |
 | `convergence_tol` | `float` | `1e-3` | Tolerance (m/rad) for deciding a blocking move reached its target. |
-| `workspace_limits` | `Dict[str, Tuple[float, float]]` | `{"x": (-0.40, 0.35), "y": (0.25, 0.80), "z": (0.0, 0.40)}` | Cartesian clamps in the UR base frame, per axis (m). |
+| `workspace_limits` | `Dict[str, Tuple[float, float]]` | `{"x": (-0.40, 0.40), "y": (-0.565, -0.265), "z": (-0.10, 0.40)}` | Cartesian clamps in the UR base frame, per axis (m). |
 | `joint_limits` | `Tuple[Tuple[float, float], ...]` | six `(-6.283185, 6.283185)` pairs | Per-joint `(min, max)` limits (rad). |
 | `max_speed` | `float` | `0.25` | Hard upper bound on commanded speed (m/s or rad/s). |
-| `home_pose` | `List[float]` | `[-0.06, 0.25, 0.115, 0.0, -3.14, 0.0]` | Home pose `[x, y, z, rx, ry, rz]` (m, rad) in UR base frame. |
+| `home_pose` | `List[float]` | `[0.0, -0.35, 0.25, 0.0, -3.14, 0.0]` | Home pose `[x, y, z, rx, ry, rz]` (m, rad) in UR base frame. |
 
 The mutable defaults (`workspace_limits`, `joint_limits`, `home_pose`) are
 created by `default_factory`, so each instance owns an independent copy.

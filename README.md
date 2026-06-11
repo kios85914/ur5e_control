@@ -25,7 +25,7 @@ python -m pytest -q         # 140 passed
 from ur5e_control import UR5eRobot, RobotConfig
 
 with UR5eRobot(RobotConfig()) as robot:        # connects on enter, disconnects on exit
-    robot.move_l([0.1, 0.3, 0.2, 0.0, -3.14, 0.0])   # world frame, meters / radians
+    robot.move_l([0.0, -0.35, 0.25, 0.0, -3.14, 0.0])   # world frame, meters / radians
     state = robot.get_state()                  # RobotState (UR base frame)
     print(state.tcp_pose, state.wrench)
     robot.home()
@@ -59,7 +59,7 @@ from ur5e_control import UR5eRobot, RobotConfig
 
 with UR5eRobot(RobotConfig()) as robot:
     robot.serve_gui()                     # one call -> http://127.0.0.1:8080
-    robot.move_l([0.1, 0.3, 0.2, 0, -3.14, 0])   # the GUI shows it live
+    robot.move_l([0.0, -0.35, 0.25, 0, -3.14, 0])   # the GUI shows it live
 ```
 
 A **control-mode toggle** at the top of the panel switches between **GUI

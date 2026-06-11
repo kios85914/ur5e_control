@@ -220,7 +220,7 @@ footer{border-top:1px solid var(--border);padding:26px 24px;text-align:center;co
 <pre><code><span class="tok-k">from</span> ur5e_control <span class="tok-k">import</span> UR5eRobot, RobotConfig
 
 <span class="tok-k">with</span> UR5eRobot(RobotConfig()) <span class="tok-k">as</span> robot:          <span class="tok-c"># connects on enter, disconnects on exit</span>
-    robot.<span class="tok-f">move_l</span>([<span class="tok-n">0.1</span>, <span class="tok-n">0.3</span>, <span class="tok-n">0.2</span>, <span class="tok-n">0.0</span>, <span class="tok-n">-3.14</span>, <span class="tok-n">0.0</span>])  <span class="tok-c"># world frame, m / rad</span>
+    robot.<span class="tok-f">move_l</span>([<span class="tok-n">0.0</span>, <span class="tok-n">-0.35</span>, <span class="tok-n">0.25</span>, <span class="tok-n">0.0</span>, <span class="tok-n">-3.14</span>, <span class="tok-n">0.0</span>])  <span class="tok-c"># world frame, m / rad</span>
 
     state = robot.<span class="tok-f">get_state</span>()                       <span class="tok-c"># RobotState (UR base frame)</span>
     <span class="tok-f">print</span>(state.tcp_pose, state.wrench)
@@ -482,9 +482,9 @@ python -m ur5e_control.gui         <span class="tok-c"># then open http://127.0.
             <tr><td><code>default_move_time</code></td><td>2.0</td><td><span lang="en">s — move/blend duration</span><span lang="ja">s — 移動/ブレンド時間</span><span lang="zh">s — 移動/混合時間</span></td></tr>
             <tr><td><code>convergence_tol</code></td><td>1e-3</td><td><span lang="en">blocking-move tolerance (m/rad)</span><span lang="ja">ブロッキング移動の許容差（m/rad）</span><span lang="zh">阻塞移動的容差（m/rad）</span></td></tr>
             <tr><td><code>max_speed</code></td><td>0.25</td><td><span lang="en">hard speed cap (m/s)</span><span lang="ja">速度のハード上限（m/s）</span><span lang="zh">速度硬上限（m/s）</span></td></tr>
-            <tr><td><code>workspace_limits</code></td><td>x(-0.40,0.35) y(0.25,0.80) z(0.0,0.40)</td><td><span lang="en">per-axis bounds (m)</span><span lang="ja">軸ごとの範囲（m）</span><span lang="zh">各軸範圍（m）</span></td></tr>
+            <tr><td><code>workspace_limits</code></td><td>x(-0.40,0.40) y(-0.565,-0.265) z(-0.10,0.40)</td><td><span lang="en">per-axis bounds (m)</span><span lang="ja">軸ごとの範囲（m）</span><span lang="zh">各軸範圍（m）</span></td></tr>
             <tr><td><code>joint_limits</code></td><td>6 × (-2π, 2π)</td><td><span lang="en">per-joint bounds (rad)</span><span lang="ja">関節ごとの範囲（rad）</span><span lang="zh">各關節範圍（rad）</span></td></tr>
-            <tr><td><code>home_pose</code></td><td>[-0.06, 0.25, 0.115, 0, -3.14, 0]</td><td><span lang="en">UR base frame</span><span lang="ja">UR ベース座標系</span><span lang="zh">UR 基座座標系</span></td></tr>
+            <tr><td><code>home_pose</code></td><td>[0.0, -0.35, 0.25, 0, -3.14, 0]</td><td><span lang="en">UR base frame</span><span lang="ja">UR ベース座標系</span><span lang="zh">UR 基座座標系</span></td></tr>
           </tbody>
         </table></div>
         <p lang="en">Methods <code>world_to_ur(pose)</code> / <code>ur_to_world(pose)</code> convert between frames. <b>Default is identity</b> (world == UR base frame). Override them in <code>RobotConfig</code> if your world frame differs (e.g. negate x/y, add an offset); keep them mutual inverses.</p>
@@ -545,7 +545,7 @@ python -m ur5e_control.examples.python_with_gui     <span class="tok-c"># open h
 
 <span class="tok-k">with</span> UR5eRobot(RobotConfig()) <span class="tok-k">as</span> robot:
     robot.<span class="tok-f">serve_gui</span>()                  <span class="tok-c"># one call -> monitor at http://127.0.0.1:8080</span>
-    robot.<span class="tok-f">move_l</span>([<span class="tok-n">0.1</span>, <span class="tok-n">0.3</span>, <span class="tok-n">0.2</span>, <span class="tok-n">0</span>, <span class="tok-n">-3.14</span>, <span class="tok-n">0</span>])  <span class="tok-c"># GUI shows it live</span></code></pre>
+    robot.<span class="tok-f">move_l</span>([<span class="tok-n">0.0</span>, <span class="tok-n">-0.35</span>, <span class="tok-n">0.25</span>, <span class="tok-n">0</span>, <span class="tok-n">-3.14</span>, <span class="tok-n">0</span>])  <span class="tok-c"># GUI shows it live</span></code></pre>
         <div class="callout info">
           <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>
           <div class="body"><span lang="en"><b>Control-mode toggle</b> (top of the panel): <b>Python control</b> locks the GUI's move/jog/home (live monitor) so a human can't fight your script — <b>STOP always works</b>. <b>GUI control</b> re-enables the buttons for manual jogging. The lock is enforced server-side, not just hidden.</span><span lang="ja"><b>制御モード切替</b>(パネル上部): <b>Python control</b> は GUI の move/jog/home をロック(ライブモニタ)し、人がスクリプトと競合しないように —— <b>STOP は常に有効</b>。<b>GUI control</b> で手動ジョグ用にボタンを再有効化。ロックはサーバ側で強制(隠すだけではない)。</span><span lang="zh"><b>控制模式切換</b>(面板上方): <b>Python control</b> 會鎖住 GUI 的 move/jog/home(純監看),避免人手跟腳本打架 —— <b>STOP 永遠可用</b>。<b>GUI control</b> 把按鈕重新啟用以便手動 jog。鎖定是後端強制,不只是隱藏。</span></div>

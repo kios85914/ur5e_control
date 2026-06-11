@@ -52,7 +52,7 @@ from ur5e_control.robot import UR5eRobot
 # Chosen to lie inside the default workspace (y within 0.25..0.80) after the
 # configured RobotConfig.world_to_ur transform — an illustrative target, not a
 # tuned production waypoint.
-_DEMO_POSE_WORLD = [-0.06, 0.30, 0.20, 0.0, -3.14, 0.0]
+_DEMO_POSE_WORLD = [-0.1, -0.4, 0.2, 0.0, -3.14, 0.0]
 
 
 def main(dry_run: bool = True) -> None:

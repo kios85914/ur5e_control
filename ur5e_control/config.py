@@ -30,9 +30,9 @@ def _default_workspace_limits() -> Dict[str, Tuple[float, float]]:
     every :class:`RobotConfig` instance owns an independent copy.
     """
     return {
-        "x": (-0.40, 0.35),
-        "y": (0.25, 0.80),
-        "z": (0.0, 0.40),
+        "x": (-0.40, 0.40),
+        "y": (-0.565, -0.265),
+        "z": (-0.10, 0.40),
     }
 
 
@@ -49,7 +49,7 @@ def _default_home_pose() -> List[float]:
 
     Returns a fresh list so each :class:`RobotConfig` instance owns its own copy.
     """
-    return [-0.06, 0.25, 0.115, 0.0, -3.14, 0.0]
+    return [0.0, -0.35, 0.25, 0.0, -3.14, 0.0]
 
 
 @dataclass

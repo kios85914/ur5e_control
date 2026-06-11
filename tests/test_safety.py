@@ -30,8 +30,8 @@ def config():
 
 def test_pose_inside_bounds_passes(config):
     """A pose well inside every workspace limit returns True."""
-    # Default limits: x (-0.40, 0.35), y (0.25, 0.80), z (0.0, 0.40).
-    pose = [0.0, 0.5, 0.2, 0.0, -3.14, 0.0]
+    # Default limits: x (-0.40, 0.40), y (-0.565, -0.265), z (-0.10, 0.40).
+    pose = [0.0, -0.35, 0.2, 0.0, -3.14, 0.0]
     assert check_pose_in_workspace(pose, config) is True
 
 

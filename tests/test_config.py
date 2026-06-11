@@ -53,7 +53,7 @@ def test_defaults_match_locked_values():
     assert cfg.default_move_time == 2.0
     assert cfg.convergence_tol == 1e-3
     assert cfg.max_speed == 0.25
-    assert cfg.home_pose == [-0.06, 0.25, 0.115, 0.0, -3.14, 0.0]
+    assert cfg.home_pose == [0.0, -0.35, 0.25, 0.0, -3.14, 0.0]
 
 
 def test_home_pose_has_length_6():
@@ -67,9 +67,9 @@ def test_workspace_limits_has_xyz_tuples():
     cfg = RobotConfig()
     limits = cfg.workspace_limits
     assert set(limits.keys()) == {"x", "y", "z"}
-    assert limits["x"] == (-0.40, 0.35)
-    assert limits["y"] == (0.25, 0.80)
-    assert limits["z"] == (0.0, 0.40)
+    assert limits["x"] == (-0.40, 0.40)
+    assert limits["y"] == (-0.565, -0.265)
+    assert limits["z"] == (-0.10, 0.40)
     for axis in ("x", "y", "z"):
         lo, hi = limits[axis]
         assert lo < hi
@@ -93,8 +93,8 @@ def test_mutable_defaults_are_independent_between_instances():
     assert a.workspace_limits is not b.workspace_limits
     a.home_pose[0] = 999.0
     a.workspace_limits["x"] = (0.0, 0.0)
-    assert b.home_pose[0] == -0.06
-    assert b.workspace_limits["x"] == (-0.40, 0.35)
+    assert b.home_pose[0] == 0.0
+    assert b.workspace_limits["x"] == (-0.40, 0.40)
 
 
 def test_full_round_trip_random_like_values():

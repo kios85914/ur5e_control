@@ -110,7 +110,7 @@ def test_move_l_sends_movel_encoded_with_frame_transform():
     cfg = RobotConfig()
     mc = MotionController(conn, cfg)
 
-    world_pose = [-0.06, 0.30, 0.20, 0.0, -3.14, 0.0]
+    world_pose = [-0.1, -0.4, 0.2, 0.0, -3.14, 0.0]
     mc.move_l(world_pose, speed=0.1, accel=0.1, blocking=False)
 
     # whatever the configured frame transform is, the sent pose is its output.
@@ -126,7 +126,7 @@ def test_move_l_uses_config_defaults_for_speed_and_accel():
     cfg = RobotConfig()
     mc = MotionController(conn, cfg)
 
-    world_pose = [-0.06, 0.30, 0.20, 0.0, -3.14, 0.0]
+    world_pose = [-0.1, -0.4, 0.2, 0.0, -3.14, 0.0]
     mc.move_l(world_pose, blocking=False)
 
     ur_pose = cfg.world_to_ur(world_pose)
@@ -141,7 +141,7 @@ def test_move_l_relative_adds_to_current_world_pose():
     # Current UR pose (in-workspace: y within 0.25..0.80) -> world pose via
     # config.ur_to_world (whatever the configured transform is).
     cfg = RobotConfig()
-    current_ur = [0.1, 0.3, 0.2, 0.0, -3.14, 0.0]
+    current_ur = [0.0, -0.35, 0.2, 0.0, -3.14, 0.0]
     conn = FakeConnection(state_frames=[_state_frame(current_ur)])
     mc = MotionController(conn, cfg)
 
@@ -178,7 +178,7 @@ def test_move_l_rejects_nonpositive_speed():
     conn = FakeConnection()
     mc = MotionController(conn, RobotConfig())
     with pytest.raises(SpeedViolation):
-        mc.move_l([-0.06, 0.30, 0.20, 0.0, -3.14, 0.0], speed=0.0, blocking=False)
+        mc.move_l([-0.1, -0.4, 0.2, 0.0, -3.14, 0.0], speed=0.0, blocking=False)
     assert conn.sent == []
 
 
@@ -188,7 +188,7 @@ def test_move_l_clamps_speed_to_max():
     cfg = RobotConfig()
     mc = MotionController(conn, cfg)
 
-    world_pose = [-0.06, 0.30, 0.20, 0.0, -3.14, 0.0]
+    world_pose = [-0.1, -0.4, 0.2, 0.0, -3.14, 0.0]
     mc.move_l(world_pose, speed=10.0, accel=0.1, blocking=False)
 
     expected = mc.encode_command(
@@ -255,7 +255,7 @@ def test_home_sends_cmd3_blocking_false():
 def test_move_l_blocking_exits_when_state_converges():
     """A blocking move returns once latest TCP pose is within convergence_tol."""
     cfg = RobotConfig()
-    world_target = [-0.06, 0.30, 0.20, 0.0, -3.14, 0.0]
+    world_target = [-0.1, -0.4, 0.2, 0.0, -3.14, 0.0]
     ur_target = cfg.world_to_ur(world_target)
 
     # Far, then near (within 1e-3 of UR target on every axis).
@@ -274,7 +274,7 @@ def test_move_l_blocking_exits_when_state_converges():
 def test_move_l_blocking_keeps_polling_until_within_tol():
     """The loop keeps polling while the pose stays outside convergence_tol."""
     cfg = RobotConfig()
-    world_target = [-0.06, 0.30, 0.20, 0.0, -3.14, 0.0]
+    world_target = [-0.1, -0.4, 0.2, 0.0, -3.14, 0.0]
     ur_target = cfg.world_to_ur(world_target)
 
     far = _state_frame([v + 0.1 for v in ur_target])
@@ -294,7 +294,7 @@ def test_move_l_blocking_keeps_polling_until_within_tol():
 def test_blocking_ignores_empty_state_then_converges():
     """An empty latest_state ('' before any frame) is tolerated, not fatal."""
     cfg = RobotConfig()
-    world_target = [-0.06, 0.30, 0.20, 0.0, -3.14, 0.0]
+    world_target = [-0.1, -0.4, 0.2, 0.0, -3.14, 0.0]
     ur_target = cfg.world_to_ur(world_target)
 
     near = _state_frame([v + 1e-4 for v in ur_target])

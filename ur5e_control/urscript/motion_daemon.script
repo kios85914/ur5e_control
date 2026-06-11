@@ -49,7 +49,7 @@
 #   cmd = 2  stop  : a0 = deceleration (m/s^2); a1..a5 = 0
 #                    -> stopl(a0)
 #   cmd = 3  home  : payload all 0; daemon uses the configured home pose
-#                    -> movel(p[-0.06,0.25,0.115,0.0,-3.14,0.0], accel, vel, time)
+#                    -> movel(<config.home_pose, injected as {{HOME_POSE}}>, accel, vel, time)
 #   cmd = 4  force : a0..a2 = direction unit vector
 #                    a3      = target force (N)
 #                    a4      = stiffness

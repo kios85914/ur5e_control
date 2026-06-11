@@ -72,7 +72,7 @@ def main(dry_run: bool = True, gui: bool = False) -> None:
         show_state(robot)
 
         print("\n2) absolute move_l to a world pose")
-        robot.move_l([-0.06, 0.30, 0.20, 0.0, -3.14, 0.0], speed=0.05, blocking=blocking)
+        robot.move_l([-0.1, -0.4, 0.2, 0.0, -3.14, 0.0], speed=0.05, blocking=blocking)
 
         print("\n3) relative jog: +5 cm in Z")
         try:
