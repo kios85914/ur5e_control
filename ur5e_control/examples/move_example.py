@@ -49,10 +49,10 @@ from ur5e_control.config import RobotConfig
 from ur5e_control.robot import UR5eRobot
 
 # A demo target pose in the WORLD frame, [x, y, z, rx, ry, rz] (meters/radians).
-# Chosen to lie inside the default workspace once converted to the UR base frame
-# (world x/y are negated by RobotConfig.world_to_ur): UR pose ~ (0.06, -0.30, ...)
-# is a safe, illustrative target rather than a tuned production waypoint.
-_DEMO_POSE_WORLD = [-0.06, -0.30, 0.20, 0.0, -3.14, 0.0]
+# Chosen to lie inside the default workspace (y within 0.25..0.80) after the
+# configured RobotConfig.world_to_ur transform — an illustrative target, not a
+# tuned production waypoint.
+_DEMO_POSE_WORLD = [-0.06, 0.30, 0.20, 0.0, -3.14, 0.0]
 
 
 def main(dry_run: bool = True) -> None:

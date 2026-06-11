@@ -111,7 +111,7 @@ class RobotConfig:
             A new UR-base-frame pose ``[x, y, z, rx, ry, rz]`` in meters/radians.
         """
         x, y, z, rx, ry, rz = pose
-        return [-x, -y, z, rx, ry, rz]
+        return [x, y, z, rx, ry, rz]
 
     def ur_to_world(self, pose: List[float]) -> List[float]:
         """Convert a pose from the UR base frame to the world frame.
@@ -127,4 +127,4 @@ class RobotConfig:
             A new world-frame pose ``[x, y, z, rx, ry, rz]`` in meters/radians.
         """
         x, y, z, rx, ry, rz = pose
-        return [-x, -y, z, rx, ry, rz]
+        return [x, y, z, rx, ry, rz]

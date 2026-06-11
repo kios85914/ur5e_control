@@ -12,12 +12,12 @@ import pytest
 from ur5e_control.config import RobotConfig
 
 
-def test_world_to_ur_negates_x_and_y():
-    """world_to_ur negates only x and y; z and rotations are unchanged."""
+def test_world_to_ur_default_is_identity():
+    """Default world<->UR transform is identity (world == UR base frame)."""
     cfg = RobotConfig()
-    pose = [0.1, 0.3, 0.2, 0.4, -3.0, 0.5]  # meters / radians, world frame
-    result = cfg.world_to_ur(pose)
-    assert result == [-0.1, -0.3, 0.2, 0.4, -3.0, 0.5]
+    pose = [0.1, 0.3, 0.2, 0.4, -3.0, 0.5]  # meters / radians
+    assert cfg.world_to_ur(pose) == [0.1, 0.3, 0.2, 0.4, -3.0, 0.5]
+    assert cfg.ur_to_world(pose) == [0.1, 0.3, 0.2, 0.4, -3.0, 0.5]
 
 
 def test_world_to_ur_round_trips_to_identity():

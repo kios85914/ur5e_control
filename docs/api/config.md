@@ -13,8 +13,9 @@ through `RobotConfig.world_to_ur` and `RobotConfig.ur_to_world`.
   (rotation-vector) orientation.
 * *Joints* are `[j0, j1, j2, j3, j4, j5]` in radians.
 * Geometry stored in this config (`home_pose`, `workspace_limits`,
-  `joint_limits`) is expressed in the **UR base frame**. The world frame differs
-  only by negating the x and y axes.
+  `joint_limits`) is expressed in the **UR base frame**. By default the world
+  frame equals the UR base frame (`world_to_ur`/`ur_to_world` are identity);
+  override those methods if your world frame differs.
 
 ---
 

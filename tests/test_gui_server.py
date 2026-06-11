@@ -17,8 +17,8 @@ import pytest
 from ur5e_control import RobotConfig, UR5eRobot
 from ur5e_control.gui.server import RobotService, make_handler, serve_in_background
 
-# a pose that lands inside the default workspace after world_to_ur (negate x,y)
-_OK_POSE = [0.0, -0.5, 0.2, 0.0, -3.14, 0.0]
+# a valid pose inside the default UR-frame workspace (y within 0.25..0.80)
+_OK_POSE = [-0.06, 0.30, 0.20, 0.0, -3.14, 0.0]
 
 
 def _attached_service():
@@ -59,9 +59,8 @@ def test_move_l_not_connected_fails_cleanly():
 def test_move_l_valid_pose_ok_in_dry_run():
     svc = RobotService()
     svc.connect({"dry_run": True})
-    # world pose chosen so that world_to_ur (negate x,y) lands inside the
-    # default workspace: ur = [0.0, 0.5, 0.2, ...] within x/y/z bounds.
-    res = svc.move_l({"pose": [0.0, -0.5, 0.2, 0.0, -3.14, 0.0], "speed": 0.05})
+    # a valid UR-frame pose (y within the 0.25..0.80 workspace bound).
+    res = svc.move_l({"pose": [-0.06, 0.30, 0.20, 0.0, -3.14, 0.0], "speed": 0.05})
     assert res["ok"] is True
 
 
@@ -216,7 +215,7 @@ def test_http_status_endpoint(server):
 def test_http_connect_then_move_flow(server):
     _, res = _post(server, "/api/connect", {"dry_run": True})
     assert res["ok"] is True and res["dry_run"] is True
-    _, res = _post(server, "/api/move_l", {"pose": [0.0, -0.5, 0.2, 0.0, -3.14, 0.0]})
+    _, res = _post(server, "/api/move_l", {"pose": [-0.06, 0.30, 0.20, 0.0, -3.14, 0.0]})
     assert res["ok"] is True
     _, res = _post(server, "/api/stop", {})
     assert res["ok"] is True

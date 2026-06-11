@@ -20,9 +20,12 @@ Run it::
 
     python -m ur5e_control.examples.python_control          # dry-run (no robot)
     python -m ur5e_control.examples.python_control --live   # real robot
+    python -m ur5e_control.examples.python_control --gui    # also open the live GUI
 
-In dry-run nothing is sent and there is no state stream, so moves are issued
-non-blocking and state reads simply report "no live state".
+With ``--gui`` (or ``main(gui=True)``) the browser monitor opens via
+``robot.serve_gui()`` and the script holds at the end so you can keep watching;
+Ctrl-C to quit. In dry-run nothing is sent and there is no state stream, so moves
+are issued non-blocking and state reads simply report "no live state".
 """
 
 from __future__ import annotations
@@ -50,7 +53,7 @@ def show_state(robot: UR5eRobot) -> None:
         print(f"   (no live state: {exc})")
 
 
-def main(dry_run: bool = True) -> None:
+def main(dry_run: bool = True, gui: bool = False) -> None:
     config = RobotConfig()
     blocking = not dry_run  # no state stream to converge against in dry-run
     mode = "DRY-RUN (nothing is moved)" if dry_run else "LIVE (real robot)"
@@ -59,6 +62,9 @@ def main(dry_run: bool = True) -> None:
 
     # connect() on enter, disconnect() on exit (even if the body raises).
     with UR5eRobot(config, dry_run=dry_run) as robot:
+        if gui:
+            robot.serve_gui()  # live monitor at http://127.0.0.1:8080 (optional)
+            print("GUI monitor: http://127.0.0.1:8080\n")
         if not dry_run:
             time.sleep(0.5)  # give the daemon a moment to start streaming state
 
@@ -66,7 +72,7 @@ def main(dry_run: bool = True) -> None:
         show_state(robot)
 
         print("\n2) absolute move_l to a world pose")
-        robot.move_l([-0.06, -0.30, 0.20, 0.0, -3.14, 0.0], speed=0.05, blocking=blocking)
+        robot.move_l([-0.06, 0.30, 0.20, 0.0, -3.14, 0.0], speed=0.05, blocking=blocking)
 
         print("\n3) relative jog: +5 cm in Z")
         try:
@@ -84,8 +90,17 @@ def main(dry_run: bool = True) -> None:
         print("\n6) home")
         robot.home(blocking=blocking)
 
+        if gui:
+            print("\nGUI still up at http://127.0.0.1:8080 — Ctrl-C to quit.")
+            try:
+                while True:
+                    time.sleep(1.0)
+            except KeyboardInterrupt:
+                pass
+
     print("\nDone. (Context manager disconnected the robot.)")
 
 
 if __name__ == "__main__":
-    main(dry_run="--live" not in sys.argv[1:])
+    args = sys.argv[1:]
+    main(dry_run="--live" not in args, gui="--gui" in args)

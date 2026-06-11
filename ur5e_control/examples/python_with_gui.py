@@ -40,7 +40,7 @@ def main(dry_run: bool = True, hold: bool = False) -> None:
 
         # ---- your control code; the GUI mirrors it live ----
         print("driving from Python (watch the browser)…")
-        robot.move_l([-0.06, -0.30, 0.20, 0.0, -3.14, 0.0], speed=0.05, blocking=blocking)
+        robot.move_l([-0.06, 0.30, 0.20, 0.0, -3.14, 0.0], speed=0.05, blocking=blocking)
         robot.move_l([0.0, 0.0, 0.05, 0, 0, 0], relative=True, speed=0.05, blocking=blocking)
         robot.home(blocking=blocking)
 
