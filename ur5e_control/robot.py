@@ -78,6 +78,7 @@ class UR5eRobot:
         # RobotConnection only binds/listens at start() (called by connect()).
         self._connection = RobotConnection(config, dry_run=dry_run)
         self._motion = MotionController(self._connection, config)
+        self._force = None  # lazily built ForceController (see the `force` property)
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -203,6 +204,29 @@ class UR5eRobot:
     # ------------------------------------------------------------------
     # State
     # ------------------------------------------------------------------
+    @property
+    def force(self) -> "ForceController":
+        """Force-aware control bound to this robot (lazy, cached).
+
+        Reads the live wrench from this robot's state stream (the Robotiq FT 300
+        value the daemon already streams) and drives motion through this robot::
+
+            robot.force.guarded_move([0, 0, -1], speed=0.02,
+                                     force_threshold_n=10.0, max_travel=0.1)
+
+        ``guarded_move`` (move until force, then stop & hold) is ready to use.
+        ``maintain_force`` / ``hold_compliant`` use the controller's force_mode and
+        are **gated on the robot by FORCE_MODE_ENABLED — pending hardware
+        validation**.
+        """
+        if self._force is None:
+            from .force.controller import ForceController
+            from .force.sensor import RobotiqFT300
+
+            sensor = RobotiqFT300(state_provider=self.get_state)
+            self._force = ForceController(self._motion, sensor, self.config)
+        return self._force
+
     def is_daemon_connected(self) -> bool:
         """Return ``True`` if the URScript daemon has connected back to the PC.
 

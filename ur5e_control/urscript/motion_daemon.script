@@ -50,12 +50,18 @@
 #                    -> stopl(a0)
 #   cmd = 3  home  : payload all 0; daemon uses the configured home pose
 #                    -> movel(<config.home_pose, injected as {{HOME_POSE}}>, accel, vel, time)
-#   cmd = 4  force : a0..a2 = direction unit vector
-#                    a3      = target force (N)
-#                    a4      = stiffness
-#                    a5      = max travel (m)
-#                    -> force_mode(...)  (guarded branch, for the future
-#                       Robotiq FT 300; disabled by default until validated)
+#   cmd = 4  MAINTAIN FORCE : a0..a2 = push dir (unit), a3 = target force X (N),
+#                    a4 = compliant-axis speed limit (m/s), a5 = max travel (m)
+#                    -> persistent force_mode (regulates constant wrench at
+#                       500 Hz). GATED by FORCE_MODE_ENABLED. Exits cooperatively.
+#   cmd = 5  GUARDED MOVE  : a0..a5 = Cartesian velocity (m/s, rad/s),
+#                    time = speedl watchdog (dead-man). -> speedl([a0..a5], accel,
+#                       time). PC monitors wrench, sends cmd=2 at the threshold.
+#   cmd = 6  END FORCE     : exit any active force mode (cooperative) and hold.
+#   cmd = 7  IMPEDANCE     : a0..a2 = compliant-axis flags (1/0),
+#                    a3 = stiffness K (N/m), a4 = speed limit (m/s),
+#                    a5 = max deviation (m). -> force_mode spring about the entry
+#                       pose (wrench = K*(x_eq - x)). GATED by FORCE_MODE_ENABLED.
 #
 # -----------------------------------------------------------------------------
 # STATE STREAM  (daemon -> PC)
@@ -87,10 +93,20 @@ def UR_Control():
     # ---- configured home pose (UR base frame, meters / radians) ------------
     global HOME_POSE = {{HOME_POSE}}
 
-    # ---- enable the cmd=4 force_mode branch only once the FT 300 is wired ---
-    # Kept False so an accidental cmd=4 cannot drive the arm into a surface
-    # before the force sensor + force_mode parameters are validated.
+    # ---- enable the force-mode branches (cmd 4 & 7) only once the FT 300 is
+    # wired and validated. Kept False so an accidental force command cannot make
+    # the arm compliant / drive it into a surface before parameters are checked.
+    # Guarded move (cmd=5, plain velocity) is NOT gated by this -- it is just a
+    # speed move like moveL.
     global FORCE_MODE_ENABLED = False
+
+    # ---- cooperative-stop flags for force modes (cmd 4 & 7) -----------------
+    # active_force is the cmd of the running force mode (0 = none). force_stop is
+    # set by client() to ask a force loop to exit so end_force_mode() ALWAYS runs
+    # before the next command -- a hard kill inside force_mode would leave the
+    # arm compliant (unsafe).
+    global active_force = 0
+    global force_stop   = False
 
     # ---- shared state ------------------------------------------------------
     global frequency    = 0.0
@@ -146,25 +162,71 @@ def UR_Control():
             movel(HOME_POSE, accel, vel, t)
         end
 
-        # --- cmd = 4 : force_mode (guarded; for the future Robotiq FT 300) -
-        # a0..a2 = direction unit vector, a3 = target force (N),
-        # a4 = stiffness, a5 = max travel (m).
+        # --- cmd = 4 : MAINTAIN FORCE (persistent force_mode) -------------
+        # a0..a2 = push direction (unit), a3 = target force X (N),
+        # a4 = compliant-axis speed limit (m/s), a5 = max travel (m).
+        # The controller regulates a constant contact wrench at 500 Hz (a PC
+        # loop can't do this stably). Holds until client() signals force_stop
+        # (cooperative stop -> end_force_mode always runs).
+        # PENDING HARDWARE VALIDATION -- gated by FORCE_MODE_ENABLED.
         if (cmd == 4):
             if (FORCE_MODE_ENABLED):
-                # Task frame at the current TCP; selection vector picks the
-                # axes the unit direction acts on; wrench applies a3 along it.
-                task_frame      = get_actual_tcp_pose()
+                active_force = 4
+                force_stop   = False
+                task_frame       = get_actual_tcp_pose()
                 selection_vector = [1, 1, 1, 0, 0, 0]
                 wrench_vector    = [a0 * a3, a1 * a3, a2 * a3, 0.0, 0.0, 0.0]
-                # type 2 == force frame fixed to the task frame.
                 f_type = 2
-                # Compliant-axis speed/displacement limits. a5 caps the travel
-                # along each compliant axis; a4 (stiffness) scales the limit.
                 limits = [a4, a4, a4, 0.17, 0.17, 0.17]
                 force_mode(task_frame, selection_vector, wrench_vector, f_type, limits)
-                # Drive along the compliant direction up to the max travel.
-                movel(pose_trans(task_frame, p[a0 * a5, a1 * a5, a2 * a5, 0.0, 0.0, 0.0]), accel, vel, t)
+                while (not force_stop):
+                    sync()
+                end
                 end_force_mode()
+                active_force = 0
+            end
+        end
+
+        # --- cmd = 5 : GUARDED MOVE velocity (speedl) ---------------------
+        # a0..a5 = Cartesian velocity [vx,vy,vz,wx,wy,wz] (m/s, rad/s).
+        # 'time' (t) is speedl's watchdog: the robot decelerates to a stop on its
+        # own if no new command arrives within t -- the hardware dead-man if the
+        # PC dies. The PC monitors the wrench and sends cmd=2 at the threshold.
+        # Not gated: this is a plain velocity move (no compliance).
+        if (cmd == 5):
+            speedl([a0, a1, a2, a3, a4, a5], accel, t)
+        end
+
+        # --- cmd = 6 : END FORCE (exit any force mode, then hold) ---------
+        # The exit is done cooperatively in client() (sets force_stop and waits
+        # for end_force_mode), so by the time this runs the force mode is already
+        # off and the arm holds its current pose stiffly. Nothing to do here.
+        if (cmd == 6):
+            sync()
+        end
+
+        # --- cmd = 7 : IMPEDANCE (force_mode spring about an equilibrium) --
+        # a0..a2 = compliant-axis flags (1/0), a3 = stiffness K (N/m),
+        # a4 = compliant-axis speed limit (m/s), a5 = max deviation (m).
+        # Holds the entry pose as equilibrium and yields to external force with
+        # finite stiffness (wrench = K * (x_eq - x), updated each cycle).
+        # PENDING HARDWARE VALIDATION -- gated by FORCE_MODE_ENABLED.
+        if (cmd == 7):
+            if (FORCE_MODE_ENABLED):
+                active_force = 7
+                force_stop   = False
+                x_eq             = get_actual_tcp_pose()
+                selection_vector = [a0, a1, a2, 0, 0, 0]
+                f_type = 2
+                limits = [a4, a4, a4, 0.17, 0.17, 0.17]
+                while (not force_stop):
+                    x = get_actual_tcp_pose()
+                    wrench_vector = [a3 * (x_eq[0] - x[0]), a3 * (x_eq[1] - x[1]), a3 * (x_eq[2] - x[2]), 0.0, 0.0, 0.0]
+                    force_mode(x_eq, selection_vector, wrench_vector, f_type, limits)
+                    sync()
+                end
+                end_force_mode()
+                active_force = 0
             end
         end
 
@@ -224,7 +286,17 @@ def UR_Control():
             # Block until a full command tuple arrives, then (re)launch the
             # control thread so the newest command pre-empts any in-flight move.
             receive_action()
-            kill control_thread
+            # If a force mode (cmd 4/7) is running, exit it COOPERATIVELY so
+            # end_force_mode() runs before the next command -- hard-killing a
+            # thread inside force_mode would leave the arm compliant (unsafe).
+            if (active_force != 0):
+                force_stop = True
+                while (active_force != 0):
+                    sync()
+                end
+            else:
+                kill control_thread
+            end
             control_thread = run move_robot()
 
             toc       = current_time

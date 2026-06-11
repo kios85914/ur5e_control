@@ -228,6 +228,16 @@ def test_wait_until_connected_times_out(patched):
     assert robot.wait_until_connected(timeout=0.02, poll=0.005) is False
 
 
+def test_force_property_returns_cached_controller(patched):
+    """robot.force lazily builds and caches a ForceController bound to the robot."""
+    from ur5e_control.force.controller import ForceController
+
+    robot = UR5eRobot()
+    fc = robot.force
+    assert isinstance(fc, ForceController)
+    assert robot.force is fc  # cached
+
+
 # ---------------------------------------------------------------------------
 # get_state
 # ---------------------------------------------------------------------------

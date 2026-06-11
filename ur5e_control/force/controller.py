@@ -44,6 +44,7 @@ max_travel], accel, vel, time)``.
 from __future__ import annotations
 
 import math
+import time
 from typing import Sequence
 
 from ..config import RobotConfig
@@ -198,6 +199,142 @@ class ForceController:
                 relative=True,
             )
             travelled += step
+
+    # ------------------------------------------------------------------
+    # Behavior 1 — GUARDED MOVE (velocity, PC-side): enabled
+    # ------------------------------------------------------------------
+    def guarded_move(
+        self,
+        direction: Sequence[float],
+        speed: float,
+        force_threshold_n: float,
+        max_travel: float,
+        accel=None,
+        poll_interval: float = 0.02,
+    ) -> list[float]:
+        """Move along ``direction`` until contact, then STOP and hold the pose.
+
+        PC-side velocity guarded move: command a single Cartesian velocity
+        (``cmd=5`` ``speedl``), monitor the wrench, and the instant the force
+        **projected onto the direction** reaches ``force_threshold_n``, send a
+        stop (``cmd=2``) — the robot holds the contact pose stiffly. This is a
+        threshold detector (not a force loop), so the PC poll rate is plenty.
+
+        Safety: the velocity is sent with a ``speedl`` watchdog of
+        ``max_travel/speed + margin`` seconds, so if this process dies the robot
+        stops on its own. ``max_travel`` (as a constant-velocity time budget) is
+        the PC-side cap; exceeding it stops and raises.
+
+        Args:
+            direction: Approach direction 3-vector ``[dx, dy, dz]`` (UR base
+                frame); normalised internally.
+            speed: Approach speed along the direction (m/s, > 0).
+            force_threshold_n: Contact force (N) along the direction that triggers
+                the stop (> 0).
+            max_travel: Max distance to search for contact (m, > 0).
+            accel: Speed-ramp acceleration (m/s^2); ``None`` uses the config
+                default.
+            poll_interval: Seconds between wrench reads.
+
+        Returns:
+            The contact wrench ``[fx, fy, fz, tx, ty, tz]`` at the moment of stop.
+
+        Raises:
+            ValueError: For a bad direction or non-positive speed/threshold/travel.
+            RuntimeError: If ``max_travel`` is consumed before contact (the robot
+                is stopped first).
+        """
+        unit = self._unit_direction(direction)
+        if speed <= 0.0:
+            raise ValueError(f"speed must be > 0 m/s, got {speed}")
+        if force_threshold_n <= 0.0:
+            raise ValueError(f"force_threshold_n must be > 0 N, got {force_threshold_n}")
+        if max_travel <= 0.0:
+            raise ValueError(f"max_travel must be > 0 m, got {max_travel}")
+
+        velocity = [unit[0] * speed, unit[1] * speed, unit[2] * speed, 0.0, 0.0, 0.0]
+        max_time = max_travel / speed
+        self._motion.speed_l(velocity, accel=accel, watchdog_t=max_time + 0.5)
+
+        elapsed = 0.0
+        while elapsed <= max_time:
+            wrench = self._sensor.read()
+            if self._project(wrench, unit) >= force_threshold_n:
+                self._motion.stop()
+                return list(wrench)
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+
+        self._motion.stop()
+        raise RuntimeError(
+            f"guarded_move: no contact within max_travel ({max_travel} m) "
+            f"at {force_threshold_n} N"
+        )
+
+    # ------------------------------------------------------------------
+    # Behaviors 2 & 3 — force_mode on the controller: PENDING HARDWARE VALIDATION
+    # (gated on the robot by FORCE_MODE_ENABLED; these just send the command)
+    # ------------------------------------------------------------------
+    def maintain_force(
+        self,
+        direction: Sequence[float],
+        target_n: float,
+        speed_limit: float = 0.05,
+        max_travel: float = 0.05,
+        accel=None,
+    ) -> None:
+        """Regulate a constant contact force ``target_n`` N along ``direction``.
+
+        Hands off to the controller's native ``force_mode`` (``cmd=4``), which
+        regulates the wrench at 500 Hz and follows the surface until
+        :meth:`end_force`. Non-blocking. **PENDING HARDWARE VALIDATION** — gated
+        on the robot by ``FORCE_MODE_ENABLED`` (a no-op until you enable it).
+
+        Args:
+            direction: Push direction 3-vector (UR base frame); normalised.
+            target_n: Target contact force (N, > 0).
+            speed_limit: Compliant-axis speed cap (m/s).
+            max_travel: Compliant-axis travel cap (m).
+            accel: Ramp accel (m/s^2); ``None`` uses the config default.
+        """
+        unit = self._unit_direction(direction)
+        if target_n <= 0.0:
+            raise ValueError(f"target_n must be > 0 N, got {target_n}")
+        self._motion.force_push(unit, target_n, speed_limit, max_travel, accel=accel)
+
+    def hold_compliant(
+        self,
+        compliant_axes: Sequence[float] = (1, 1, 1),
+        stiffness: float = 300.0,
+        speed_limit: float = 0.05,
+        max_deviation: float = 0.05,
+        accel=None,
+    ) -> None:
+        """Hold a compliant spring about the current pose (impedance).
+
+        Hands off to the controller's ``force_mode`` configured as a spring
+        (``cmd=7``): the entry pose is the equilibrium, and the arm yields to
+        external force with finite ``stiffness`` until :meth:`end_force`.
+        Non-blocking. **PENDING HARDWARE VALIDATION** — gated on the robot by
+        ``FORCE_MODE_ENABLED``.
+
+        Args:
+            compliant_axes: 3 flags ``[cx, cy, cz]`` (1 = compliant, 0 = stiff).
+            stiffness: Spring stiffness K (N/m, > 0).
+            speed_limit: Compliant-axis speed cap (m/s).
+            max_deviation: Max deviation from equilibrium (m).
+            accel: Ramp accel (m/s^2); ``None`` uses the config default.
+        """
+        axes = list(compliant_axes)
+        if len(axes) != _VEC3_LEN:
+            raise ValueError(f"compliant_axes must have {_VEC3_LEN} flags, got {len(axes)}")
+        if stiffness <= 0.0:
+            raise ValueError(f"stiffness must be > 0 N/m, got {stiffness}")
+        self._motion.impedance_hold(axes, stiffness, speed_limit, max_deviation, accel=accel)
+
+    def end_force(self) -> None:
+        """Exit any active force/impedance mode and hold the pose (``cmd=6``)."""
+        self._motion.end_force()
 
     # ------------------------------------------------------------------
     # Internal helpers

@@ -53,6 +53,14 @@ _CMD_MOVEL = 0
 _CMD_MOVEJ = 1
 _CMD_STOP = 2
 _CMD_HOME = 3
+_CMD_FORCE = 4        # maintain force (persistent force_mode)
+_CMD_SPEEDL = 5       # Cartesian velocity (guarded move)
+_CMD_END_FORCE = 6    # exit any force mode and hold
+_CMD_IMPEDANCE = 7    # compliant spring about an equilibrium pose
+
+# Default watchdog (s) for speedl: the robot stops on its own if no new command
+# arrives within this window (hardware dead-man for the guarded move).
+_DEFAULT_SPEEDL_WATCHDOG_S = 1.0
 
 # Number of scalar values in a pose / joint payload.
 _PAYLOAD_LEN = 6
@@ -308,6 +316,96 @@ class MotionController:
         if blocking:
             # The daemon homes to config.home_pose (already UR base frame).
             self._await_convergence(list(self._config.home_pose))
+
+    # ------------------------------------------------------------------
+    # Velocity / force primitives (thin encode+send; the daemon does the work)
+    # ------------------------------------------------------------------
+    def speed_l(
+        self,
+        velocity: Sequence[float],
+        accel: Optional[float] = None,
+        watchdog_t: float = _DEFAULT_SPEEDL_WATCHDOG_S,
+    ) -> None:
+        """Command a Cartesian TCP velocity (cmd=5, ``speedl``); non-blocking.
+
+        The robot accelerates to ``velocity`` and holds it until a new command
+        arrives or ``watchdog_t`` elapses (then it stops on its own — the
+        hardware dead-man). The caller is responsible for monitoring and sending
+        :meth:`stop` (this is how :meth:`ForceController.guarded_move` works).
+
+        Args:
+            velocity: TCP velocity ``[vx, vy, vz, wx, wy, wz]`` (m/s, rad/s),
+                UR base frame.
+            accel: Acceleration of the speed ramp (m/s^2). ``None`` uses
+                ``config.default_accel``.
+            watchdog_t: Seconds the robot keeps the velocity without a new command
+                before auto-stopping.
+        """
+        velocity = list(velocity)
+        if len(velocity) != _PAYLOAD_LEN:
+            raise ValueError(f"velocity must have {_PAYLOAD_LEN} values, got {len(velocity)}")
+        accel = self._config.default_accel if accel is None else accel
+        self._conn.send(self.encode_command(_CMD_SPEEDL, velocity, accel, 0.0, watchdog_t))
+
+    def force_push(
+        self,
+        direction_unit: Sequence[float],
+        target_n: float,
+        speed_limit: float,
+        max_travel: float,
+        accel: Optional[float] = None,
+    ) -> None:
+        """Maintain a constant contact force (cmd=4 persistent force_mode); non-blocking.
+
+        Sends the force-mode command; the controller then regulates the wrench at
+        500 Hz until :meth:`end_force` (or any other command) arrives. **Gated on
+        the controller by FORCE_MODE_ENABLED — pending hardware validation.**
+
+        Args:
+            direction_unit: Push direction unit 3-vector ``[dx, dy, dz]`` (UR base).
+            target_n: Target contact force (N) along the direction.
+            speed_limit: Compliant-axis speed cap (m/s).
+            max_travel: Compliant-axis travel cap (m).
+            accel: Ramp accel (m/s^2); ``None`` uses ``config.default_accel``.
+        """
+        d = list(direction_unit)
+        payload = [d[0], d[1], d[2], float(target_n), float(speed_limit), float(max_travel)]
+        accel = self._config.default_accel if accel is None else accel
+        self._conn.send(
+            self.encode_command(_CMD_FORCE, payload, accel, 0.0, self._config.default_move_time)
+        )
+
+    def impedance_hold(
+        self,
+        compliant_axes: Sequence[float],
+        stiffness: float,
+        speed_limit: float,
+        max_deviation: float,
+        accel: Optional[float] = None,
+    ) -> None:
+        """Hold a compliant spring about the current pose (cmd=7); non-blocking.
+
+        The controller holds the entry pose as equilibrium and yields to external
+        force with finite stiffness until :meth:`end_force`. **Gated on the
+        controller by FORCE_MODE_ENABLED — pending hardware validation.**
+
+        Args:
+            compliant_axes: 3 flags ``[cx, cy, cz]`` (1 = compliant, 0 = stiff).
+            stiffness: Spring stiffness K (N/m).
+            speed_limit: Compliant-axis speed cap (m/s).
+            max_deviation: Max deviation from equilibrium (m).
+            accel: Ramp accel (m/s^2); ``None`` uses ``config.default_accel``.
+        """
+        c = list(compliant_axes)
+        payload = [c[0], c[1], c[2], float(stiffness), float(speed_limit), float(max_deviation)]
+        accel = self._config.default_accel if accel is None else accel
+        self._conn.send(
+            self.encode_command(_CMD_IMPEDANCE, payload, accel, 0.0, self._config.default_move_time)
+        )
+
+    def end_force(self) -> None:
+        """Exit any active force/impedance mode and hold the pose (cmd=6)."""
+        self._conn.send(self.encode_command(_CMD_END_FORCE, [0.0] * _PAYLOAD_LEN, 0.0, 0.0, 0.0))
 
     # ------------------------------------------------------------------
     # Internal helpers

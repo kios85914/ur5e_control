@@ -411,7 +411,7 @@ python -m ur5e_control.gui         <span class="tok-c"># then open http://127.0.
             <tr><td><code>connection</code></td><td><span lang="en">Thread-safe socket transport: send commands, receive the state stream, reconnect, dry-run.</span><span lang="ja">スレッドセーフなソケット通信: コマンド送信、状態ストリーム受信、再接続、dry-run。</span><span lang="zh">thread-safe socket 傳輸:送指令、收狀態串流、重連、dry-run。</span></td></tr>
             <tr><td><code>script_sender</code></td><td><span lang="en">Uploads the URScript daemon to the controller at startup.</span><span lang="ja">起動時に URScript デーモンをコントローラへアップロード。</span><span lang="zh">啟動時把 URScript daemon 上傳到控制器。</span></td></tr>
             <tr><td><code>config / state / safety</code></td><td><span lang="en">RobotConfig + frame transforms · RobotState + parse_state · limit validators.</span><span lang="ja">RobotConfig と座標変換 · RobotState と parse_state · 制限バリデータ。</span><span lang="zh">RobotConfig 與座標轉換 · RobotState 與 parse_state · 上限驗證器。</span></td></tr>
-            <tr><td><code>force</code> <span class="badge"><span lang="en">forward-looking</span><span lang="ja">将来対応</span><span lang="zh">前瞻</span></span></td><td><span lang="en">ForceSensor (Robotiq FT 300 / Mock) + ForceController (approach-until-force, then hold).</span><span lang="ja">ForceSensor（Robotiq FT 300 / Mock）+ ForceController（力に達するまで接近して保持）。</span><span lang="zh">ForceSensor（Robotiq FT 300 / Mock）+ ForceController（移動到受力後維持）。</span></td></tr>
+            <tr><td><code>force</code> <span class="badge"><span lang="en">forward-looking</span><span lang="ja">将来対応</span><span lang="zh">前瞻</span></span></td><td><span lang="en">ForceSensor (Robotiq wrench from state) + ForceController: guarded_move (enabled) · maintain_force / hold_compliant (force_mode, gated).</span><span lang="ja">ForceSensor（状態の Robotiq レンチ）+ ForceController: guarded_move（有効）· maintain_force / hold_compliant（force_mode, ロック中）。</span><span lang="zh">ForceSensor（狀態裡的 Robotiq wrench）+ ForceController: guarded_move（已啟用）· maintain_force / hold_compliant（force_mode, 鎖住）。</span></td></tr>
           </tbody>
         </table></div>
       </section>
@@ -603,24 +603,38 @@ python -m ur5e_control.examples.python_with_gui     <span class="tok-c"># open h
           </tbody>
         </table></div>
 
-        <h3><span lang="en">approach-until-force, then hold</span><span lang="ja">力に達するまで接近して保持</span><span lang="zh">接近到受力後維持</span></h3>
-        <div class="code-cap"><span class="dot"></span>force demo (mock)</div>
-<pre><code><span class="tok-k">from</span> ur5e_control.force.sensor <span class="tok-k">import</span> MockForceSensor
-<span class="tok-k">from</span> ur5e_control.force.controller <span class="tok-k">import</span> ForceController
+        <h3><span lang="en">Three contact behaviors (via <code>robot.force</code>)</span><span lang="ja">3 つの接触挙動（<code>robot.force</code>）</span><span lang="zh">三種接觸行為（<code>robot.force</code>）</span></h3>
+        <p lang="en">Top-level command stays "Cartesian direction + speed + force threshold". <code>robot.force</code> reads the live Robotiq wrench from the state stream and drives motion.</p>
+        <p lang="ja">最上位の指令は「デカルト方向 + 速度 + 力しきい値」のまま。<code>robot.force</code> は状態ストリームの Robotiq レンチを読み、動作を駆動します。</p>
+        <p lang="zh">最上層指令仍是「笛卡兒方向 + 速度 + 力閾值」。<code>robot.force</code> 讀取狀態串流的 Robotiq wrench 並驅動運動。</p>
+        <div class="table-wrap"><table>
+          <thead><tr><th><span lang="en">behavior</span><span lang="ja">挙動</span><span lang="zh">行為</span></th><th><span lang="en">method</span><span lang="ja">メソッド</span><span lang="zh">方法</span></th><th><span lang="en">how / status</span><span lang="ja">方式 / 状態</span><span lang="zh">方式 / 狀態</span></th></tr></thead>
+          <tbody>
+            <tr><td><span lang="en">① move until force, stop &amp; hold</span><span lang="ja">① 力まで進んで停止・保持</span><span lang="zh">① 移動到受力後停住維持</span></td><td><code>guarded_move</code></td><td><span lang="en">PC velocity loop (<code>speedl</code> cmd=5 → monitor → stop). <b>Enabled.</b></span><span lang="ja">PC 速度ループ（<code>speedl</code> cmd=5 → 監視 → 停止）。<b>有効。</b></span><span lang="zh">PC 速度迴圈（<code>speedl</code> cmd=5 → 監看 → 停止）。<b>已啟用。</b></span></td></tr>
+            <tr><td><span lang="en">② maintain contact force X N</span><span lang="ja">② 接触力 X N を維持</span><span lang="zh">② 維持接觸力 X N</span></td><td><code>maintain_force</code></td><td><span lang="en">UR-native <code>force_mode</code> (cmd=4, 500 Hz). <b>Gated</b> (FORCE_MODE_ENABLED).</span><span lang="ja">UR 内蔵 <code>force_mode</code>（cmd=4, 500 Hz）。<b>ロック中</b>（FORCE_MODE_ENABLED）。</span><span lang="zh">UR 內建 <code>force_mode</code>（cmd=4, 500 Hz）。<b>鎖住</b>（FORCE_MODE_ENABLED）。</span></td></tr>
+            <tr><td><span lang="en">③ compliant / impedance</span><span lang="ja">③ 順応 / impedance</span><span lang="zh">③ 順應 / impedance</span></td><td><code>hold_compliant</code></td><td><span lang="en">UR-native <code>force_mode</code> spring (cmd=7). <b>Gated.</b> <code>end_force()</code> exits.</span><span lang="ja">UR 内蔵 <code>force_mode</code> ばね（cmd=7）。<b>ロック中。</b><code>end_force()</code> で終了。</span><span lang="zh">UR 內建 <code>force_mode</code> 彈簧（cmd=7）。<b>鎖住。</b><code>end_force()</code> 結束。</span></td></tr>
+          </tbody>
+        </table></div>
+        <div class="code-cap"><span class="dot"></span>guarded_move (ready to use)</div>
+<pre><code><span class="tok-k">with</span> UR5eRobot(RobotConfig()) <span class="tok-k">as</span> robot:
+    robot.<span class="tok-f">wait_until_connected</span>()
+    <span class="tok-c"># move down (-Z) at 2 cm/s until the contact force reaches 10 N, then hold</span>
+    contact = robot.force.<span class="tok-f">guarded_move</span>(
+        direction=[<span class="tok-n">0</span>, <span class="tok-n">0</span>, <span class="tok-n">-1</span>],   <span class="tok-c"># UR base frame</span>
+        speed=<span class="tok-n">0.02</span>,            <span class="tok-c"># m/s</span>
+        force_threshold_n=<span class="tok-n">10.0</span>,  <span class="tok-c"># N along the direction</span>
+        max_travel=<span class="tok-n">0.10</span>,        <span class="tok-c"># m search budget (also the speedl watchdog)</span>
+    )
+    <span class="tok-f">print</span>(<span class="tok-s">"contact wrench:"</span>, contact)
 
-<span class="tok-c"># wrenches climb toward contact; last one trips the 5 N target on +Z</span>
-sensor = <span class="tok-f">MockForceSensor</span>([[<span class="tok-n">0</span>,<span class="tok-n">0</span>,<span class="tok-n">1</span>,<span class="tok-n">0</span>,<span class="tok-n">0</span>,<span class="tok-n">0</span>], [<span class="tok-n">0</span>,<span class="tok-n">0</span>,<span class="tok-n">3</span>,<span class="tok-n">0</span>,<span class="tok-n">0</span>,<span class="tok-n">0</span>], [<span class="tok-n">0</span>,<span class="tok-n">0</span>,<span class="tok-n">5.2</span>,<span class="tok-n">0</span>,<span class="tok-n">0</span>,<span class="tok-n">0</span>]])
-fc = <span class="tok-f">ForceController</span>(motion, sensor, config)
-
-fc.<span class="tok-f">approach_until_force</span>(
-    direction=[<span class="tok-n">0</span>, <span class="tok-n">0</span>, <span class="tok-n">1</span>],   <span class="tok-c"># push along +Z</span>
-    target_n=<span class="tok-n">5.0</span>,           <span class="tok-c"># until |F·d| >= 5 N</span>
-    stiffness=<span class="tok-n">0.08</span>,         <span class="tok-c"># compliance once in contact</span>
-    max_travel=<span class="tok-n">0.12</span>,        <span class="tok-c"># safety budget (m) before giving up</span>
-)</code></pre>
-        <p lang="en">The law reads <em>before</em> each step (no overshoot): below-target reads issue one relative step along the unit direction; the contact read stops stepping and emits the <code>cmd 4</code> hold. Contact is decided on the force <em>projected onto the direction</em>, so side forces never false-trigger. Exceeding <code>max_travel</code> raises <code>RuntimeError</code> and emits no hold.</p>
-        <p lang="ja">制御則は各ステップの<em>前</em>に読み取ります（オーバーシュート無し）: 目標未満の読み取りでは単位方向に 1 ステップだけ相対移動し、接触の読み取りでステップを止めて <code>cmd 4</code> の保持を送出します。接触は<em>方向へ射影した力</em>で判定するため、横方向の力で誤作動しません。<code>max_travel</code> を超えると <code>RuntimeError</code> を送出し保持は出しません。</p>
-        <p lang="zh">控制律在每一步<em>之前</em>讀取（不會超衝）: 未達目標的讀值會沿單位方向送一個相對步;接觸的讀值則停止前進並送出 <code>cmd 4</code> 維持。接觸是用<em>投影到方向上的力</em>判定,因此側向力不會誤觸發。超過 <code>max_travel</code> 會丟出 <code>RuntimeError</code> 且不送出維持。</p>
+    <span class="tok-c"># behaviors 2 & 3 (after you set FORCE_MODE_ENABLED=True in the daemon):</span>
+    <span class="tok-c"># robot.force.maintain_force([0,0,-1], target_n=10.0)   # push at 10 N</span>
+    <span class="tok-c"># robot.force.hold_compliant(stiffness=300)             # springy hold</span>
+    <span class="tok-c"># robot.force.end_force()                               # exit force mode</span></code></pre>
+        <div class="callout warn">
+          <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+          <div class="body"><span lang="en"><b>Why two backends.</b> A guarded move is a force <em>threshold</em>, so the PC velocity loop is fine and latency-tolerant. Regulating a force / rendering impedance against stiff contact is a high-bandwidth feedback loop — a PC loop at tens of Hz would chatter, so behaviors ② and ③ run on the controller's 500 Hz <code>force_mode</code>. They stay <b>gated (FORCE_MODE_ENABLED=False) pending on-robot validation</b>; enabling a wrong force_mode is a real safety hazard. The daemon also exits force_mode <b>cooperatively</b> (never hard-killed mid-compliance).</span><span lang="ja"><b>2 バックエンドの理由。</b>ガード付き移動は力の<em>しきい値</em>判定なので PC 速度ループで十分（遅延に強い）。剛な接触で力を調節/インピーダンスを実現するのは高帯域フィードバックで、数十 Hz の PC ループでは振動するため、②③ はコントローラの 500 Hz <code>force_mode</code> で実行。<b>FORCE_MODE_ENABLED=False でロックし実機検証待ち</b>（誤った force_mode は安全上の危険）。デーモンは force_mode を<b>協調的に</b>終了します（順応中の強制 kill はしない）。</span><span lang="zh"><b>為何兩個後端。</b>guarded move 是力<em>閾值</em>判定,PC 速度迴圈就夠且耐延遲。對剛性接觸做力調節/impedance 是高頻寬回授,數十 Hz 的 PC 迴圈會抖動,所以 ②③ 跑在控制器的 500 Hz <code>force_mode</code>。<b>以 FORCE_MODE_ENABLED=False 鎖住、待上機驗證</b>(錯誤的 force_mode 有實際安全風險)。daemon 也以<b>合作式</b>退出 force_mode(順應中絕不硬 kill)。</span></div>
+        </div>
       </section>
 
       <!-- TROUBLESHOOTING -->

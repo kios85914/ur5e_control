@@ -78,6 +78,33 @@ python -m ur5e_control.examples.force_control_example   # mock force control
 All run with no robot (dry-run / mock) by default; pass `--live` where supported
 to drive real hardware.
 
+## Force control
+
+The top-level command stays "Cartesian direction + speed + force threshold".
+`robot.force` reads the live Robotiq wrench (already in the state stream) and
+drives motion. Three contact behaviors:
+
+```python
+with UR5eRobot(RobotConfig()) as robot:
+    robot.wait_until_connected()
+
+    # ① move until force, then stop & hold  (ENABLED — PC velocity loop)
+    contact = robot.force.guarded_move(
+        direction=[0, 0, -1], speed=0.02, force_threshold_n=10.0, max_travel=0.10)
+
+    # ② maintain a contact force,  ③ compliant/impedance hold
+    #    (UR-native force_mode; GATED by FORCE_MODE_ENABLED — pending HW validation)
+    # robot.force.maintain_force([0, 0, -1], target_n=10.0)
+    # robot.force.hold_compliant(stiffness=300)
+    # robot.force.end_force()
+```
+
+`guarded_move` is a force **threshold** (PC velocity loop, latency-tolerant).
+Regulating force / impedance against stiff contact needs 500 Hz, so ② and ③ run
+on the controller's `force_mode` and stay **gated** (`FORCE_MODE_ENABLED=False`)
+until validated on the robot — a wrong `force_mode` is a real safety hazard. The
+daemon exits force_mode **cooperatively** (never hard-killed mid-compliance).
+
 ## Layout
 
 ```
@@ -89,7 +116,9 @@ ur5e_control/
   script_sender.py uploads the URScript daemon to the controller
   motion.py        MotionController: byte-exact command encoding, safety, convergence
   robot.py         UR5eRobot facade (the public API)
-  force/           ForceSensor (Robotiq FT 300 / Mock) + ForceController  [forward-looking]
+  force/           ForceSensor (Robotiq wrench) + ForceController:
+                     guarded_move (move-until-force, stop & hold) — ENABLED;
+                     maintain_force / hold_compliant (force_mode) — gated, pending HW
   gui/             web control panel: stdlib http.server + index.html (python -m ur5e_control.gui)
   urscript/motion_daemon.script   generalized 6-DOF daemon (moveL/moveJ/stop/home/force)
   examples/        runnable dry-run / mock examples
