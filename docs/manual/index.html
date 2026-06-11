@@ -7,7 +7,7 @@
 <meta name="description" content="User manual for ur5e_control: a pure control library for the UR5e robot arm over the URScript socket transport.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#0F172A; --bg-alt:#0B1120; --surface:#131C30; --surface-2:#1B263F;
@@ -16,8 +16,8 @@
   --accent:#22C55E; --accent-dim:#16864033; --accent-soft:#15803D;
   --info:#38BDF8; --warn:#F59E0B; --danger:#EF4444;
   --ring:#22C55E;
-  --mono:"JetBrains Mono","Noto Sans JP",ui-monospace,SFMono-Regular,Menlo,monospace;
-  --sans:"IBM Plex Sans","Noto Sans JP",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  --mono:"JetBrains Mono","Noto Sans TC","Noto Sans JP",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans","Noto Sans TC","Noto Sans JP",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
   --radius:10px; --radius-sm:7px;
   --sidebar-w:264px; --maxw:880px;
   --shadow:0 8px 30px rgba(0,0,0,.35);
@@ -31,13 +31,17 @@ a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
 code,kbd{font-family:var(--mono);font-size:.88em}
 h1,h2,h3,h4{font-family:var(--mono);font-weight:600;line-height:1.3;letter-spacing:-.01em}
 
-/* ---- language toggle ---- */
-html[data-lang="en"] [lang="ja"]{display:none!important}
-html[data-lang="ja"] [lang="en"]{display:none!important}
+/* ---- language toggle: show only the active language ---- */
+html[data-lang="en"] [lang]:not([lang="en"]){display:none!important}
+html[data-lang="ja"] [lang]:not([lang="ja"]){display:none!important}
+html[data-lang="zh"] [lang]:not([lang="zh"]){display:none!important}
 html[data-lang="ja"]{--sans:"Noto Sans JP","IBM Plex Sans",system-ui,sans-serif}
+html[data-lang="zh"]{--sans:"Noto Sans TC","IBM Plex Sans",system-ui,sans-serif}
 html[data-lang="ja"] h1,html[data-lang="ja"] h2,html[data-lang="ja"] h3,html[data-lang="ja"] h4{font-family:"JetBrains Mono","Noto Sans JP",monospace}
+html[data-lang="zh"] h1,html[data-lang="zh"] h2,html[data-lang="zh"] h3,html[data-lang="zh"] h4{font-family:"JetBrains Mono","Noto Sans TC",monospace}
 .lang-toggle{display:inline-flex;border:1px solid var(--border);border-radius:20px;overflow:hidden;background:var(--bg-alt)}
-.lang-toggle button{font-family:var(--mono);font-size:11.5px;color:var(--fg-faint);background:transparent;border:0;padding:6px 13px;cursor:pointer;transition:background .18s,color .18s}
+.lang-toggle button{font-family:var(--mono);font-size:11.5px;color:var(--fg-faint);background:transparent;border:0;padding:6px 12px;cursor:pointer;transition:background .18s,color .18s}
+.lang-toggle button + button{border-left:1px solid var(--border)}
 .lang-toggle button.active{background:var(--accent-dim);color:var(--fg)}
 .lang-toggle button:focus-visible{outline:2px solid var(--ring);outline-offset:-2px}
 
@@ -155,19 +159,19 @@ footer{border-top:1px solid var(--border);padding:26px 24px;text-align:center;co
       <div><div class="name">ur5e_control</div><span class="ver">v0.1.0</span></div>
     </div>
     <nav class="toc" id="toc">
-      <div class="toc-label"><span lang="en">Getting started</span><span lang="ja">はじめに</span></div>
-      <a href="#quickstart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg><span lang="en">Quick Start</span><span lang="ja">クイックスタート</span></a>
-      <a href="#install"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span lang="en">Installation</span><span lang="ja">インストール</span></a>
-      <div class="toc-label"><span lang="en">Concepts</span><span lang="ja">コンセプト</span></div>
-      <a href="#architecture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg><span lang="en">Architecture</span><span lang="ja">アーキテクチャ</span></a>
-      <a href="#protocol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span lang="en">Protocol &amp; Frames</span><span lang="ja">プロトコルと座標系</span></a>
-      <div class="toc-label"><span lang="en">Reference</span><span lang="ja">リファレンス</span></div>
-      <a href="#api"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span lang="en">API Reference</span><span lang="ja">API リファレンス</span></a>
-      <a href="#examples"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg><span lang="en">Examples</span><span lang="ja">サンプル</span></a>
-      <div class="toc-label"><span lang="en">Operations</span><span lang="ja">運用</span></div>
-      <a href="#safety"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span lang="en">Safety</span><span lang="ja">安全</span></a>
-      <a href="#force"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v6"/><path d="M12 22v-6"/><path d="M2 12h6"/><path d="M22 12h-6"/></svg><span lang="en">Force Control</span><span lang="ja">力制御</span></a>
-      <a href="#troubleshooting"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span lang="en">Troubleshooting</span><span lang="ja">トラブルシューティング</span></a>
+      <div class="toc-label"><span lang="en">Getting started</span><span lang="ja">はじめに</span><span lang="zh">開始</span></div>
+      <a href="#quickstart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg><span lang="en">Quick Start</span><span lang="ja">クイックスタート</span><span lang="zh">快速開始</span></a>
+      <a href="#install"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span lang="en">Installation</span><span lang="ja">インストール</span><span lang="zh">安裝</span></a>
+      <div class="toc-label"><span lang="en">Concepts</span><span lang="ja">コンセプト</span><span lang="zh">概念</span></div>
+      <a href="#architecture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg><span lang="en">Architecture</span><span lang="ja">アーキテクチャ</span><span lang="zh">架構</span></a>
+      <a href="#protocol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span lang="en">Protocol &amp; Frames</span><span lang="ja">プロトコルと座標系</span><span lang="zh">協定與座標系</span></a>
+      <div class="toc-label"><span lang="en">Reference</span><span lang="ja">リファレンス</span><span lang="zh">參考</span></div>
+      <a href="#api"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span lang="en">API Reference</span><span lang="ja">API リファレンス</span><span lang="zh">API 參考</span></a>
+      <a href="#examples"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg><span lang="en">Examples</span><span lang="ja">サンプル</span><span lang="zh">範例</span></a>
+      <div class="toc-label"><span lang="en">Operations</span><span lang="ja">運用</span><span lang="zh">操作</span></div>
+      <a href="#safety"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span lang="en">Safety</span><span lang="ja">安全</span><span lang="zh">安全</span></a>
+      <a href="#force"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v6"/><path d="M12 22v-6"/><path d="M2 12h6"/><path d="M22 12h-6"/></svg><span lang="en">Force Control</span><span lang="ja">力制御</span><span lang="zh">力量控制</span></a>
+      <a href="#troubleshooting"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span lang="en">Troubleshooting</span><span lang="ja">トラブルシューティング</span><span lang="zh">疑難排解</span></a>
     </nav>
   </aside>
   <div class="backdrop" id="backdrop"></div>
@@ -178,9 +182,10 @@ footer{border-top:1px solid var(--border);padding:26px 24px;text-align:center;co
       <button class="menu-btn" id="menuBtn" aria-label="Toggle navigation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
       <div class="crumb">docs / <b>manual</b> / ur5e_control</div>
       <div class="spacer"></div>
-      <div class="lang-toggle" role="group" aria-label="Language / 言語">
+      <div class="lang-toggle" role="group" aria-label="Language / 言語 / 語言">
         <button data-set-lang="en" class="active" aria-pressed="true">EN</button>
         <button data-set-lang="ja" aria-pressed="false">日本語</button>
+        <button data-set-lang="zh" aria-pressed="false">中文</button>
       </div>
     </header>
 
@@ -188,27 +193,29 @@ footer{border-top:1px solid var(--border);padding:26px 24px;text-align:center;co
 
       <!-- HERO -->
       <div class="hero">
-        <div class="eyebrow"><span lang="en">UR5e · pure control library</span><span lang="ja">UR5e · 純制御ライブラリ</span></div>
-        <h1><span lang="en">Drive the arm.</span><span lang="ja">アームを動かす。</span><span class="blink">_</span></h1>
+        <div class="eyebrow"><span lang="en">UR5e · pure control library</span><span lang="ja">UR5e · 純制御ライブラリ</span><span lang="zh">UR5e · 純控制函式庫</span></div>
+        <h1><span lang="en">Drive the arm.</span><span lang="ja">アームを動かす。</span><span lang="zh">驅動機械臂。</span><span class="blink">_</span></h1>
         <p lang="en">A clean, dependency-free Python library for commanding a Universal Robots UR5e over the URScript socket transport — full 6-DOF Cartesian and joint motion, with a forward-looking Robotiq FT 300 force-control subsystem.</p>
         <p lang="ja">URScript ソケット経由で Universal Robots UR5e を制御する、依存ゼロのクリーンな Python ライブラリ。6 自由度のデカルト空間・関節空間モーションに対応し、将来の Robotiq FT 300 力制御サブシステムを見据えた設計です。</p>
+        <p lang="zh">透過 URScript socket 控制 Universal Robots UR5e 的乾淨、零依賴 Python 函式庫 — 完整 6 自由度的笛卡兒空間與關節空間運動,並預留 Robotiq FT 300 力量控制子系統。</p>
         <div class="pill-row">
-          <span class="pill" lang="en"><b>0</b> runtime deps</span><span class="pill" lang="ja"><b>0</b> ランタイム依存</span>
-          <span class="pill" lang="en"><b>129</b> tests passing</span><span class="pill" lang="ja">テスト <b>129</b> 件パス</span>
+          <span class="pill" lang="en"><b>0</b> runtime deps</span><span class="pill" lang="ja"><b>0</b> ランタイム依存</span><span class="pill" lang="zh">執行期依賴 <b>0</b></span>
+          <span class="pill" lang="en"><b>129</b> tests passing</span><span class="pill" lang="ja">テスト <b>129</b> 件パス</span><span class="pill" lang="zh"><b>129</b> 個測試通過</span>
           <span class="pill">Python <b>3.10+</b></span>
-          <span class="pill" lang="en">meters · radians · <b>base frame</b></span><span class="pill" lang="ja">メートル · ラジアン · <b>ベース座標系</b></span>
+          <span class="pill" lang="en">meters · radians · <b>base frame</b></span><span class="pill" lang="ja">メートル · ラジアン · <b>ベース座標系</b></span><span class="pill" lang="zh">公尺 · 弧度 · <b>基座座標系</b></span>
         </div>
         <div class="callout warn" style="margin-top:22px">
           <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
-          <div class="body"><span lang="en">This library moves a <b>real robot arm</b>. Read the <a href="#safety">Safety</a> section before connecting to hardware. The library itself is verified only by code-level tests (parsing, encoding, safety, control law via mocks) — <b>on-robot validation is the operator's responsibility</b>.</span><span lang="ja">このライブラリは<b>実機のロボットアーム</b>を動かします。ハードウェアに接続する前に必ず<a href="#safety">「安全」</a>セクションを読んでください。ライブラリ自体はコードレベルのテスト（パース・エンコード・安全検証・モックによる制御則）でのみ検証されています。<b>実機での検証は操作者の責任です。</b></span></div>
+          <div class="body"><span lang="en">This library moves a <b>real robot arm</b>. Read the <a href="#safety">Safety</a> section before connecting to hardware. The library itself is verified only by code-level tests (parsing, encoding, safety, control law via mocks) — <b>on-robot validation is the operator's responsibility</b>.</span><span lang="ja">このライブラリは<b>実機のロボットアーム</b>を動かします。ハードウェアに接続する前に必ず<a href="#safety">「安全」</a>セクションを読んでください。ライブラリ自体はコードレベルのテスト（パース・エンコード・安全検証・モックによる制御則）でのみ検証されています。<b>実機での検証は操作者の責任です。</b></span><span lang="zh">這個函式庫會驅動<b>真實的機械臂</b>。連接硬體前請先閱讀<a href="#safety">「安全」</a>章節。函式庫本身僅以程式碼層級測試驗證（解析、編碼、安全、用 mock 測控制律）—<b>實機驗證是操作者的責任。</b></span></div>
         </div>
       </div>
 
       <!-- QUICK START -->
       <section id="quickstart">
-        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg></span><h2><span lang="en">Quick Start</span><span lang="ja">クイックスタート</span></h2></div>
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg></span><h2><span lang="en">Quick Start</span><span lang="ja">クイックスタート</span><span lang="zh">快速開始</span></h2></div>
         <p class="lead" lang="en">Connect, move the tool to a Cartesian pose, read state, return home.</p>
         <p class="lead" lang="ja">接続し、ツールをデカルト姿勢へ動かし、状態を読み取り、ホームへ戻します。</p>
+        <p class="lead" lang="zh">連接、把工具移動到笛卡兒姿態、讀取狀態、回到 home。</p>
         <div class="code-cap"><span class="dot"></span>first_move.py</div>
 <pre><code><span class="tok-k">from</span> ur5e_control <span class="tok-k">import</span> UR5eRobot, RobotConfig
 
@@ -223,15 +230,16 @@ footer{border-top:1px solid var(--border);padding:26px 24px;text-align:center;co
 </code></pre>
         <div class="callout tip">
           <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg></span>
-          <div class="body"><span lang="en"><b>What <code>connect()</code> does:</b> uploads the URScript daemon to the controller (<code>controller_ip:script_port</code>), then opens the PC-side socket so the daemon's state stream starts flowing back. Everything else is delegated to the motion layer.</span><span lang="ja"><b><code>connect()</code> の動作:</b> URScript デーモンをコントローラ（<code>controller_ip:script_port</code>）にアップロードし、PC 側のソケットを開いてデーモンからの状態ストリームを受信し始めます。それ以外はすべてモーション層に委譲されます。</span></div>
+          <div class="body"><span lang="en"><b>What <code>connect()</code> does:</b> uploads the URScript daemon to the controller (<code>controller_ip:script_port</code>), then opens the PC-side socket so the daemon's state stream starts flowing back. Everything else is delegated to the motion layer.</span><span lang="ja"><b><code>connect()</code> の動作:</b> URScript デーモンをコントローラ（<code>controller_ip:script_port</code>）にアップロードし、PC 側のソケットを開いてデーモンからの状態ストリームを受信し始めます。それ以外はすべてモーション層に委譲されます。</span><span lang="zh"><b><code>connect()</code> 做的事:</b> 把 URScript daemon 上傳到控制器（<code>controller_ip:script_port</code>）,然後開啟 PC 端 socket 讓 daemon 的狀態串流回傳。其餘都委派給 motion 層。</span></div>
         </div>
       </section>
 
       <!-- INSTALL -->
       <section id="install">
-        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span><h2><span lang="en">Installation</span><span lang="ja">インストール</span></h2></div>
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span><h2><span lang="en">Installation</span><span lang="ja">インストール</span><span lang="zh">安裝</span></h2></div>
         <p class="lead" lang="en">Runtime is pure standard library. You only need a virtual environment for the test suite.</p>
         <p class="lead" lang="ja">ランタイムは純粋な標準ライブラリのみ。仮想環境はテストスイートのためだけに必要です。</p>
+        <p class="lead" lang="zh">執行期是純標準函式庫。只有測試套件需要虛擬環境。</p>
         <div class="code-cap"><span class="dot"></span>shell</div>
 <pre><code><span class="tok-c"># Runtime: no third-party packages required (socket, threading, dataclasses, abc).</span>
 <span class="tok-c"># For the test suite, create a venv (uv shown; venv/pip works too):</span>
@@ -244,22 +252,23 @@ uv pip install --python .venv/bin/python pytest
 <span class="tok-c"># Import smoke test</span>
 .venv/bin/python -c <span class="tok-s">"from ur5e_control import UR5eRobot, RobotConfig, RobotState"</span></code></pre>
         <div class="kfacts">
-          <div class="kfact"><div class="v">30001</div><div class="l"><span lang="en">script_port (daemon upload)</span><span lang="ja">script_port（デーモン送信）</span></div></div>
-          <div class="kfact"><div class="v">30002</div><div class="l"><span lang="en">state_port (PC ↔ daemon)</span><span lang="ja">state_port（PC ↔ デーモン）</span></div></div>
-          <div class="kfact"><div class="v">0.1 m/s</div><div class="l"><span lang="en">default speed</span><span lang="ja">デフォルト速度</span></div></div>
-          <div class="kfact"><div class="v">0.25 m/s</div><div class="l"><span lang="en">max speed (safety cap)</span><span lang="ja">最大速度（安全上限）</span></div></div>
+          <div class="kfact"><div class="v">30001</div><div class="l"><span lang="en">script_port (daemon upload)</span><span lang="ja">script_port（デーモン送信）</span><span lang="zh">script_port（daemon 上傳）</span></div></div>
+          <div class="kfact"><div class="v">30002</div><div class="l"><span lang="en">state_port (PC ↔ daemon)</span><span lang="ja">state_port（PC ↔ デーモン）</span><span lang="zh">state_port（PC ↔ daemon）</span></div></div>
+          <div class="kfact"><div class="v">0.1 m/s</div><div class="l"><span lang="en">default speed</span><span lang="ja">デフォルト速度</span><span lang="zh">預設速度</span></div></div>
+          <div class="kfact"><div class="v">0.25 m/s</div><div class="l"><span lang="en">max speed (safety cap)</span><span lang="ja">最大速度（安全上限）</span><span lang="zh">最大速度（安全上限）</span></div></div>
         </div>
         <div class="callout info">
           <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>
-          <div class="body"><span lang="en">The robot must be in <b>remote control</b> mode and reachable at <code>config.controller_ip</code>. The PC must be reachable from the controller at <code>config.pc_host</code> (the daemon connects <em>back</em> to the PC).</span><span lang="ja">ロボットは<b>リモートコントロール</b>モードで、<code>config.controller_ip</code> で到達可能である必要があります。PC はコントローラから <code>config.pc_host</code> で到達可能である必要があります（デーモンが PC に接続し<em>返す</em>ため）。</span></div>
+          <div class="body"><span lang="en">The robot must be in <b>remote control</b> mode and reachable at <code>config.controller_ip</code>. The PC must be reachable from the controller at <code>config.pc_host</code> (the daemon connects <em>back</em> to the PC).</span><span lang="ja">ロボットは<b>リモートコントロール</b>モードで、<code>config.controller_ip</code> で到達可能である必要があります。PC はコントローラから <code>config.pc_host</code> で到達可能である必要があります（デーモンが PC に接続し<em>返す</em>ため）。</span><span lang="zh">機器人必須處於<b>遠端控制</b>模式,且能以 <code>config.controller_ip</code> 連到。PC 必須能從控制器以 <code>config.pc_host</code> 連到（daemon 會<em>回連</em> PC）。</span></div>
         </div>
       </section>
 
       <!-- ARCHITECTURE -->
       <section id="architecture">
-        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span><h2><span lang="en">Architecture</span><span lang="ja">アーキテクチャ</span></h2></div>
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span><h2><span lang="en">Architecture</span><span lang="ja">アーキテクチャ</span><span lang="zh">架構</span></h2></div>
         <p class="lead" lang="en">Startup brings the daemon up; then the PC and controller exchange information in a loop — like an RL agent↔environment cycle, with the <b>command as the action</b> and the <b>state as the observation</b>.</p>
         <p class="lead" lang="ja">起動でデーモンを立ち上げ、その後 PC とコントローラがループで情報をやり取りします — RL のエージェント↔環境サイクルのように、<b>コマンドが行動</b>、<b>状態が観測</b>に相当します。</p>
+        <p class="lead" lang="zh">啟動會把 daemon 拉起;之後 PC 與控制器以迴圈交換資訊 — 就像 RL 的 agent↔環境 循環,<b>command 是 action</b>、<b>state 是 observation</b>。</p>
 
         <div class="diagram-wrap">
         <svg class="dataflow" viewBox="0 0 820 470" role="img" aria-labelledby="dfTitle" preserveAspectRatio="xMidYMin meet">
@@ -270,12 +279,12 @@ uv pip install --python .venv/bin/python pytest
             <marker id="ahGray" markerWidth="10" markerHeight="10" refX="7.5" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,3 L0,6 Z" fill="#7C8AA3"/></marker>
           </defs>
 
-          <!-- ===== Left column: Control PC (agent) ===== -->
+          <!-- Left column: Control PC (agent) -->
           <rect x="28" y="86" width="232" height="356" rx="14" fill="#0c1426" stroke="#15803d" stroke-opacity=".55"/>
           <rect x="28" y="86" width="232" height="46" rx="14" fill="#14532d33"/>
           <text x="144" y="108" text-anchor="middle" fill="#F8FAFC" font-family="JetBrains Mono,monospace" font-weight="600" font-size="14">Control PC</text>
           <text x="144" y="125" text-anchor="middle" fill="#7C8AA3" font-family="JetBrains Mono,monospace" font-size="10.5">ur5e_control</text>
-          <text x="144" y="424" text-anchor="middle" fill="#22C55E" font-family="JetBrains Mono,monospace" font-size="11"><tspan lang="en">≈ agent</tspan><tspan lang="ja">≈ エージェント</tspan></text>
+          <text x="144" y="424" text-anchor="middle" fill="#22C55E" font-family="JetBrains Mono,monospace" font-size="11"><tspan lang="en">≈ agent</tspan><tspan lang="ja">≈ エージェント</tspan><tspan lang="zh">≈ 代理 (agent)</tspan></text>
 
           <g font-family="JetBrains Mono,monospace" font-size="12" fill="#E2E8F0" text-anchor="middle">
             <rect x="46" y="150" width="196" height="40" rx="8" fill="#131C30" stroke="#2C3A52"/><text x="144" y="174">UR5eRobot</text>
@@ -284,92 +293,94 @@ uv pip install --python .venv/bin/python pytest
             <rect x="46" y="294" width="196" height="40" rx="8" fill="#131C30" stroke="#2C3A52"/><text x="144" y="318">script_sender</text>
           </g>
 
-          <!-- ===== Right column: UR5e controller (environment) ===== -->
+          <!-- Right column: UR5e controller (environment) -->
           <rect x="560" y="86" width="232" height="356" rx="14" fill="#0c1426" stroke="#0c4a6e" stroke-opacity=".75"/>
           <rect x="560" y="86" width="232" height="46" rx="14" fill="#0c4a6e33"/>
           <text x="676" y="108" text-anchor="middle" fill="#F8FAFC" font-family="JetBrains Mono,monospace" font-weight="600" font-size="14">UR5e controller</text>
           <text x="676" y="125" text-anchor="middle" fill="#7C8AA3" font-family="JetBrains Mono,monospace" font-size="10.5">motion_daemon.script</text>
-          <text x="676" y="424" text-anchor="middle" fill="#38BDF8" font-family="JetBrains Mono,monospace" font-size="11"><tspan lang="en">≈ environment</tspan><tspan lang="ja">≈ 環境</tspan></text>
+          <text x="676" y="424" text-anchor="middle" fill="#38BDF8" font-family="JetBrains Mono,monospace" font-size="11"><tspan lang="en">≈ environment</tspan><tspan lang="ja">≈ 環境</tspan><tspan lang="zh">≈ 環境 (environment)</tspan></text>
 
           <g font-family="JetBrains Mono,monospace" font-size="12" fill="#E2E8F0" text-anchor="middle">
             <rect x="578" y="150" width="196" height="40" rx="8" fill="#131C30" stroke="#2C3A52"/><text x="676" y="174">receive → dispatch</text>
             <rect x="578" y="198" width="196" height="40" rx="8" fill="#131C30" stroke="#2C3A52"/><text x="676" y="222">movel / movej</text>
             <rect x="578" y="246" width="196" height="40" rx="8" fill="#131C30" stroke="#2C3A52"/><text x="676" y="270">send_state</text>
             <rect x="578" y="300" width="196" height="40" rx="8" fill="#0c1426" stroke="#475569"/><text x="676" y="324">UR5e arm</text>
-            <text x="676" y="332" font-size="9" fill="#7C8AA3">▔▔▔▔▔</text>
           </g>
 
-          <!-- ===== Phase 1: startup ===== -->
-          <text x="410" y="150" text-anchor="middle" fill="#7C8AA3" font-family="JetBrains Mono,monospace" font-size="11" letter-spacing="1"><tspan lang="en">① STARTUP</tspan><tspan lang="ja">① 起動</tspan></text>
+          <!-- Phase 1: startup -->
+          <text x="410" y="150" text-anchor="middle" fill="#7C8AA3" font-family="JetBrains Mono,monospace" font-size="11" letter-spacing="1"><tspan lang="en">① STARTUP</tspan><tspan lang="ja">① 起動</tspan><tspan lang="zh">① 啟動</tspan></text>
 
           <line x1="262" y1="178" x2="556" y2="178" stroke="#7C8AA3" stroke-width="1.6" marker-end="url(#ahGray)"/>
-          <text x="410" y="172" text-anchor="middle" fill="#AEB9CC" font-size="11"><tspan lang="en">upload motion_daemon.script</tspan><tspan lang="ja">motion_daemon.script を送信</tspan></text>
+          <text x="410" y="172" text-anchor="middle" fill="#AEB9CC" font-size="11"><tspan lang="en">upload motion_daemon.script</tspan><tspan lang="ja">motion_daemon.script を送信</tspan><tspan lang="zh">上傳 motion_daemon.script</tspan></text>
           <text x="410" y="192" text-anchor="middle" fill="#7C8AA3" font-family="JetBrains Mono,monospace" font-size="10">script_sender → :30001</text>
 
           <line x1="556" y1="222" x2="262" y2="222" stroke="#7C8AA3" stroke-width="1.6" marker-end="url(#ahGray)"/>
-          <text x="410" y="216" text-anchor="middle" fill="#AEB9CC" font-size="11"><tspan lang="en">daemon connects back to PC</tspan><tspan lang="ja">デーモンが PC へ接続し返す</tspan></text>
+          <text x="410" y="216" text-anchor="middle" fill="#AEB9CC" font-size="11"><tspan lang="en">daemon connects back to PC</tspan><tspan lang="ja">デーモンが PC へ接続し返す</tspan><tspan lang="zh">daemon 回連 PC</tspan></text>
           <text x="410" y="236" text-anchor="middle" fill="#7C8AA3" font-family="JetBrains Mono,monospace" font-size="10">socket → :30002</text>
 
-          <!-- ===== Phase 2: control loop ===== -->
-          <text x="410" y="274" text-anchor="middle" fill="#22C55E" font-family="JetBrains Mono,monospace" font-size="11" letter-spacing="1"><tspan lang="en">② CONTROL LOOP</tspan><tspan lang="ja">② 制御ループ</tspan></text>
+          <!-- Phase 2: control loop -->
+          <text x="410" y="274" text-anchor="middle" fill="#22C55E" font-family="JetBrains Mono,monospace" font-size="11" letter-spacing="1"><tspan lang="en">② CONTROL LOOP</tspan><tspan lang="ja">② 制御ループ</tspan><tspan lang="zh">② 控制迴圈</tspan></text>
 
           <line x1="262" y1="302" x2="556" y2="302" stroke="#22C55E" stroke-width="2.2" marker-end="url(#ahG)"/>
-          <text x="410" y="296" text-anchor="middle" fill="#86efac" font-size="11"><tspan lang="en">command  ≈ action</tspan><tspan lang="ja">コマンド  ≈ 行動</tspan></text>
+          <text x="410" y="296" text-anchor="middle" fill="#86efac" font-size="11"><tspan lang="en">command  ≈ action</tspan><tspan lang="ja">コマンド  ≈ 行動</tspan><tspan lang="zh">command  ≈ 行動</tspan></text>
           <text x="410" y="316" text-anchor="middle" fill="#7C8AA3" font-family="JetBrains Mono,monospace" font-size="9.5">(cmd, a0..a5, accel, vel, time)</text>
 
           <line x1="556" y1="346" x2="262" y2="346" stroke="#38BDF8" stroke-width="2.2" marker-end="url(#ahB)"/>
-          <text x="410" y="340" text-anchor="middle" fill="#7dd3fc" font-size="11"><tspan lang="en">state  ≈ observation</tspan><tspan lang="ja">状態  ≈ 観測</tspan></text>
+          <text x="410" y="340" text-anchor="middle" fill="#7dd3fc" font-size="11"><tspan lang="en">state  ≈ observation</tspan><tspan lang="ja">状態  ≈ 観測</tspan><tspan lang="zh">state  ≈ 觀測</tspan></text>
           <text x="410" y="360" text-anchor="middle" fill="#7C8AA3" font-family="JetBrains Mono,monospace" font-size="9.5">p[pose]_p[speed]_[joints]_p[wrench]+</text>
 
-          <text x="410" y="392" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="10"><tspan lang="en">↻ repeats every command</tspan><tspan lang="ja">↻ コマンドごとに繰り返し</tspan></text>
+          <text x="410" y="392" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="10"><tspan lang="en">↻ repeats every command</tspan><tspan lang="ja">↻ コマンドごとに繰り返し</tspan><tspan lang="zh">↻ 每個 command 重複</tspan></text>
         </svg>
         </div>
         <div class="legend">
-          <span><i style="background:#7C8AA3"></i><span lang="en">startup / bring-up</span><span lang="ja">起動・立ち上げ</span></span>
-          <span><i style="background:#22C55E"></i><span lang="en">command (PC → controller)</span><span lang="ja">コマンド（PC → コントローラ）</span></span>
-          <span><i style="background:#38BDF8"></i><span lang="en">state (controller → PC)</span><span lang="ja">状態（コントローラ → PC）</span></span>
+          <span><i style="background:#7C8AA3"></i><span lang="en">startup / bring-up</span><span lang="ja">起動・立ち上げ</span><span lang="zh">啟動 / 拉起</span></span>
+          <span><i style="background:#22C55E"></i><span lang="en">command (PC → controller)</span><span lang="ja">コマンド（PC → コントローラ）</span><span lang="zh">command（PC → 控制器）</span></span>
+          <span><i style="background:#38BDF8"></i><span lang="en">state (controller → PC)</span><span lang="ja">状態（コントローラ → PC）</span><span lang="zh">state（控制器 → PC）</span></span>
         </div>
 
-        <h3><span lang="en">Layers</span><span lang="ja">レイヤー</span></h3>
+        <h3><span lang="en">Layers</span><span lang="ja">レイヤー</span><span lang="zh">各層</span></h3>
         <div class="table-wrap"><table>
-          <thead><tr><th><span lang="en">module</span><span lang="ja">モジュール</span></th><th><span lang="en">responsibility</span><span lang="ja">責務</span></th></tr></thead>
+          <thead><tr><th><span lang="en">module</span><span lang="ja">モジュール</span><span lang="zh">模組</span></th><th><span lang="en">responsibility</span><span lang="ja">責務</span><span lang="zh">責任</span></th></tr></thead>
           <tbody>
-            <tr><td><code>robot</code></td><td><span lang="en">Public facade — composes the layers, owns no geometry, context-manager lifecycle.</span><span lang="ja">公開ファサード — 各層を統合。幾何計算は持たず、コンテキストマネージャでライフサイクル管理。</span></td></tr>
-            <tr><td><code>motion</code></td><td><span lang="en">Byte-exact command encoding, world→UR transform + safety checks, blocking convergence.</span><span lang="ja">バイト厳密なコマンドエンコード、World→UR 変換と安全チェック、収束までブロッキング。</span></td></tr>
-            <tr><td><code>connection</code></td><td><span lang="en">Thread-safe socket transport: send commands, receive the state stream, reconnect, dry-run.</span><span lang="ja">スレッドセーフなソケット通信: コマンド送信、状態ストリーム受信、再接続、dry-run。</span></td></tr>
-            <tr><td><code>script_sender</code></td><td><span lang="en">Uploads the URScript daemon to the controller at startup.</span><span lang="ja">起動時に URScript デーモンをコントローラへアップロード。</span></td></tr>
-            <tr><td><code>config / state / safety</code></td><td><span lang="en">RobotConfig + frame transforms · RobotState + parse_state · limit validators.</span><span lang="ja">RobotConfig と座標変換 · RobotState と parse_state · 制限バリデータ。</span></td></tr>
-            <tr><td><code>force</code> <span class="badge"><span lang="en">forward-looking</span><span lang="ja">将来対応</span></span></td><td><span lang="en">ForceSensor (Robotiq FT 300 / Mock) + ForceController (approach-until-force, then hold).</span><span lang="ja">ForceSensor（Robotiq FT 300 / Mock）+ ForceController（力に達するまで接近して保持）。</span></td></tr>
+            <tr><td><code>robot</code></td><td><span lang="en">Public facade — composes the layers, owns no geometry, context-manager lifecycle.</span><span lang="ja">公開ファサード — 各層を統合。幾何計算は持たず、コンテキストマネージャでライフサイクル管理。</span><span lang="zh">公開門面 — 組合各層,本身不含幾何運算,以 context manager 管理生命週期。</span></td></tr>
+            <tr><td><code>motion</code></td><td><span lang="en">Byte-exact command encoding, world→UR transform + safety checks, blocking convergence.</span><span lang="ja">バイト厳密なコマンドエンコード、World→UR 変換と安全チェック、収束までブロッキング。</span><span lang="zh">byte 精確的指令編碼、world→UR 轉換 + 安全檢查、阻塞式收斂。</span></td></tr>
+            <tr><td><code>connection</code></td><td><span lang="en">Thread-safe socket transport: send commands, receive the state stream, reconnect, dry-run.</span><span lang="ja">スレッドセーフなソケット通信: コマンド送信、状態ストリーム受信、再接続、dry-run。</span><span lang="zh">thread-safe socket 傳輸:送指令、收狀態串流、重連、dry-run。</span></td></tr>
+            <tr><td><code>script_sender</code></td><td><span lang="en">Uploads the URScript daemon to the controller at startup.</span><span lang="ja">起動時に URScript デーモンをコントローラへアップロード。</span><span lang="zh">啟動時把 URScript daemon 上傳到控制器。</span></td></tr>
+            <tr><td><code>config / state / safety</code></td><td><span lang="en">RobotConfig + frame transforms · RobotState + parse_state · limit validators.</span><span lang="ja">RobotConfig と座標変換 · RobotState と parse_state · 制限バリデータ。</span><span lang="zh">RobotConfig 與座標轉換 · RobotState 與 parse_state · 上限驗證器。</span></td></tr>
+            <tr><td><code>force</code> <span class="badge"><span lang="en">forward-looking</span><span lang="ja">将来対応</span><span lang="zh">前瞻</span></span></td><td><span lang="en">ForceSensor (Robotiq FT 300 / Mock) + ForceController (approach-until-force, then hold).</span><span lang="ja">ForceSensor（Robotiq FT 300 / Mock）+ ForceController（力に達するまで接近して保持）。</span><span lang="zh">ForceSensor（Robotiq FT 300 / Mock）+ ForceController（移動到受力後維持）。</span></td></tr>
           </tbody>
         </table></div>
       </section>
 
       <!-- PROTOCOL -->
       <section id="protocol">
-        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span><h2><span lang="en">Protocol &amp; Frames</span><span lang="ja">プロトコルと座標系</span></h2></div>
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span><h2><span lang="en">Protocol &amp; Frames</span><span lang="ja">プロトコルと座標系</span><span lang="zh">協定與座標系</span></h2></div>
         <p class="lead" lang="en">Everything is meters, radians, and the UR base frame. World↔UR conversion is explicit in <code>RobotConfig</code> — there is no hidden negation.</p>
         <p class="lead" lang="ja">すべてメートル・ラジアン・UR ベース座標系です。World↔UR 変換は <code>RobotConfig</code> に明示されており、隠れた符号反転はありません。</p>
+        <p class="lead" lang="zh">全部都是公尺、弧度、UR 基座座標系。World↔UR 轉換在 <code>RobotConfig</code> 中明確定義 — 沒有隱藏的符號反轉。</p>
 
-        <h3><span lang="en">Command tuple</span><span lang="ja">コマンドタプル</span> <span style="font-family:var(--sans);font-size:13px;color:var(--fg-faint)">(PC → daemon)</span></h3>
+        <h3><span lang="en">Command tuple</span><span lang="ja">コマンドタプル</span><span lang="zh">指令 tuple</span> <span style="font-family:var(--sans);font-size:13px;color:var(--fg-faint)">(PC → daemon)</span></h3>
         <p lang="en">A fixed 10-float ASCII string: <code>"(cmd, a0, a1, a2, a3, a4, a5, accel, vel, time)"</code>. The daemon reads it with <code>socket_read_ascii_float(10, …)</code>.</p>
         <p lang="ja">固定 10 個の float の ASCII 文字列: <code>"(cmd, a0, a1, a2, a3, a4, a5, accel, vel, time)"</code>。デーモンは <code>socket_read_ascii_float(10, …)</code> で読み取ります。</p>
+        <p lang="zh">固定 10 個 float 的 ASCII 字串: <code>"(cmd, a0, a1, a2, a3, a4, a5, accel, vel, time)"</code>。daemon 用 <code>socket_read_ascii_float(10, …)</code> 讀取。</p>
         <div class="table-wrap"><table>
-          <thead><tr><th>cmd</th><th><span lang="en">action</span><span lang="ja">動作</span></th><th>a0 … a5</th><th>accel / vel / time</th></tr></thead>
+          <thead><tr><th>cmd</th><th><span lang="en">action</span><span lang="ja">動作</span><span lang="zh">動作</span></th><th>a0 … a5</th><th>accel / vel / time</th></tr></thead>
           <tbody>
-            <tr><td><code>0</code></td><td>moveL</td><td><span lang="en">pose <code>x,y,z,rx,ry,rz</code> (m, rad)</span><span lang="ja">姿勢 <code>x,y,z,rx,ry,rz</code>（m, rad）</span></td><td>m/s², m/s, s</td></tr>
-            <tr><td><code>1</code></td><td>moveJ</td><td><span lang="en">joints <code>j0..j5</code> (rad)</span><span lang="ja">関節 <code>j0..j5</code>（rad）</span></td><td>rad/s², rad/s, s</td></tr>
-            <tr><td><code>2</code></td><td>stop</td><td><span lang="en"><code>a0</code> = deceleration; rest 0</span><span lang="ja"><code>a0</code> = 減速度; 残り 0</span></td><td>0</td></tr>
-            <tr><td><code>3</code></td><td>home</td><td><span lang="en">all 0 → daemon uses <code>home_pose</code></span><span lang="ja">すべて 0 → デーモンが <code>home_pose</code> を使用</span></td><td>m/s², m/s, s</td></tr>
-            <tr><td><code>4</code></td><td>force <span class="badge"><span lang="en">guarded</span><span lang="ja">ガード付き</span></span></td><td><span lang="en"><code>a0..a2</code> direction · <code>a3</code> target N · <code>a4</code> stiffness · <code>a5</code> max travel</span><span lang="ja"><code>a0..a2</code> 方向 · <code>a3</code> 目標 N · <code>a4</code> 剛性 · <code>a5</code> 最大移動量</span></td><td>m/s², m/s, s</td></tr>
+            <tr><td><code>0</code></td><td>moveL</td><td><span lang="en">pose <code>x,y,z,rx,ry,rz</code> (m, rad)</span><span lang="ja">姿勢 <code>x,y,z,rx,ry,rz</code>（m, rad）</span><span lang="zh">姿態 <code>x,y,z,rx,ry,rz</code>（m, rad）</span></td><td>m/s², m/s, s</td></tr>
+            <tr><td><code>1</code></td><td>moveJ</td><td><span lang="en">joints <code>j0..j5</code> (rad)</span><span lang="ja">関節 <code>j0..j5</code>（rad）</span><span lang="zh">關節 <code>j0..j5</code>（rad）</span></td><td>rad/s², rad/s, s</td></tr>
+            <tr><td><code>2</code></td><td>stop</td><td><span lang="en"><code>a0</code> = deceleration; rest 0</span><span lang="ja"><code>a0</code> = 減速度; 残り 0</span><span lang="zh"><code>a0</code> = 減速度; 其餘 0</span></td><td>0</td></tr>
+            <tr><td><code>3</code></td><td>home</td><td><span lang="en">all 0 → daemon uses <code>home_pose</code></span><span lang="ja">すべて 0 → デーモンが <code>home_pose</code> を使用</span><span lang="zh">全 0 → daemon 使用 <code>home_pose</code></span></td><td>m/s², m/s, s</td></tr>
+            <tr><td><code>4</code></td><td>force <span class="badge"><span lang="en">guarded</span><span lang="ja">ガード付き</span><span lang="zh">已鎖定</span></span></td><td><span lang="en"><code>a0..a2</code> direction · <code>a3</code> target N · <code>a4</code> stiffness · <code>a5</code> max travel</span><span lang="ja"><code>a0..a2</code> 方向 · <code>a3</code> 目標 N · <code>a4</code> 剛性 · <code>a5</code> 最大移動量</span><span lang="zh"><code>a0..a2</code> 方向 · <code>a3</code> 目標 N · <code>a4</code> 剛性 · <code>a5</code> 最大移動量</span></td><td>m/s², m/s, s</td></tr>
           </tbody>
         </table></div>
 
-        <h3><span lang="en">State frame</span><span lang="ja">状態フレーム</span> <span style="font-family:var(--sans);font-size:13px;color:var(--fg-faint)">(daemon → PC)</span></h3>
+        <h3><span lang="en">State frame</span><span lang="ja">状態フレーム</span><span lang="zh">狀態 frame</span> <span style="font-family:var(--sans);font-size:13px;color:var(--fg-faint)">(daemon → PC)</span></h3>
         <p lang="en">Groups separated by <code>_</code>, each frame terminated by <code>+</code>. <code>parse_state</code> takes the last complete frame:</p>
         <p lang="ja">グループは <code>_</code> 区切り、各フレームは <code>+</code> で終端。<code>parse_state</code> は最後の完全なフレームを取得します:</p>
+        <p lang="zh">群組以 <code>_</code> 分隔,每個 frame 以 <code>+</code> 結尾。<code>parse_state</code> 取最後一個完整 frame:</p>
 <pre><code>p[x,y,z,rx,ry,rz]_p[vx,vy,vz,wx,wy,wz]_[j0,j1,j2,j3,j4,j5]_p[fx,fy,fz,tx,ty,tz]+</code></pre>
         <div class="table-wrap"><table>
-          <thead><tr><th><span lang="en">group</span><span lang="ja">グループ</span></th><th><span lang="en">field</span><span lang="ja">フィールド</span></th><th><span lang="en">units</span><span lang="ja">単位</span></th></tr></thead>
+          <thead><tr><th><span lang="en">group</span><span lang="ja">グループ</span><span lang="zh">群組</span></th><th><span lang="en">field</span><span lang="ja">フィールド</span><span lang="zh">欄位</span></th><th><span lang="en">units</span><span lang="ja">単位</span><span lang="zh">單位</span></th></tr></thead>
           <tbody>
             <tr><td>1</td><td><code>tcp_pose</code> — x, y, z, rx, ry, rz</td><td>m, rad</td></tr>
             <tr><td>2</td><td><code>tcp_speed</code> — vx…wz</td><td>m/s, rad/s</td></tr>
@@ -381,42 +392,44 @@ uv pip install --python .venv/bin/python pytest
 
       <!-- API REFERENCE -->
       <section id="api">
-        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span><h2><span lang="en">API Reference</span><span lang="ja">API リファレンス</span></h2></div>
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span><h2><span lang="en">API Reference</span><span lang="ja">API リファレンス</span><span lang="zh">API 參考</span></h2></div>
         <p class="lead" lang="en">The public surface. Per-module markdown lives in <code>docs/api/</code>.</p>
         <p class="lead" lang="ja">公開 API。モジュールごとの markdown は <code>docs/api/</code> にあります。</p>
+        <p class="lead" lang="zh">公開 API。各模組的 markdown 在 <code>docs/api/</code>。</p>
 
-        <h3>UR5eRobot <span style="font-family:var(--sans);font-size:13px;color:var(--fg-faint)"><span lang="en">— the facade</span><span lang="ja">— ファサード</span></span></h3>
+        <h3>UR5eRobot <span style="font-family:var(--sans);font-size:13px;color:var(--fg-faint)"><span lang="en">— the facade</span><span lang="ja">— ファサード</span><span lang="zh">— 門面</span></span></h3>
         <div class="api-card"><div class="sig"><span class="nm">UR5eRobot</span>(config: RobotConfig = RobotConfig())</div>
-          <div class="desc"><span lang="en">Construct the robot. No I/O happens until <code>connect()</code>. Usable as a context manager.</span><span lang="ja">ロボットを構築。<code>connect()</code> まで I/O は発生しません。コンテキストマネージャとして使用可能。</span></div></div>
+          <div class="desc"><span lang="en">Construct the robot. No I/O happens until <code>connect()</code>. Usable as a context manager.</span><span lang="ja">ロボットを構築。<code>connect()</code> まで I/O は発生しません。コンテキストマネージャとして使用可能。</span><span lang="zh">建立機器人。<code>connect()</code> 之前不會有 I/O。可作為 context manager 使用。</span></div></div>
         <div class="api-card"><div class="sig"><span class="nm">connect</span>() → None &nbsp;·&nbsp; <span class="nm">disconnect</span>() → None</div>
-          <div class="desc"><span lang="en"><code>connect()</code> uploads the daemon then starts the state connection. <code>disconnect()</code> closes it (idempotent). Both are driven automatically by the <code>with</code> block.</span><span lang="ja"><code>connect()</code> はデーモンをアップロードしてから状態接続を開始。<code>disconnect()</code> はそれを閉じます（冪等）。どちらも <code>with</code> ブロックが自動実行します。</span></div></div>
+          <div class="desc"><span lang="en"><code>connect()</code> uploads the daemon then starts the state connection. <code>disconnect()</code> closes it (idempotent). Both are driven automatically by the <code>with</code> block.</span><span lang="ja"><code>connect()</code> はデーモンをアップロードしてから状態接続を開始。<code>disconnect()</code> はそれを閉じます（冪等）。どちらも <code>with</code> ブロックが自動実行します。</span><span lang="zh"><code>connect()</code> 上傳 daemon 然後啟動狀態連線。<code>disconnect()</code> 關閉它（冪等）。兩者都由 <code>with</code> 區塊自動執行。</span></div></div>
         <div class="api-card"><div class="sig"><span class="nm">move_l</span>(pose, speed=None, accel=None, blocking=True, relative=False) → None</div>
-          <div class="desc"><span lang="en">Linear (Cartesian) move of the TCP. <code>pose</code> is a world-frame <code>[x, y, z, rx, ry, rz]</code> in m/rad (a delta if <code>relative=True</code>). Converted to UR frame, workspace-checked, encoded, sent; if blocking, polls until within <code>convergence_tol</code>.</span><span lang="ja">TCP の直線（デカルト）移動。<code>pose</code> は World 座標系の <code>[x, y, z, rx, ry, rz]</code>（m/rad、<code>relative=True</code> なら差分）。UR 座標系へ変換し、作業範囲チェック・エンコード・送信。blocking なら <code>convergence_tol</code> 以内に入るまでポーリング。</span> <span class="badge raises">raises WorkspaceViolation · SpeedViolation</span></div></div>
+          <div class="desc"><span lang="en">Linear (Cartesian) move of the TCP. <code>pose</code> is a world-frame <code>[x, y, z, rx, ry, rz]</code> in m/rad (a delta if <code>relative=True</code>). Converted to UR frame, workspace-checked, encoded, sent; if blocking, polls until within <code>convergence_tol</code>.</span><span lang="ja">TCP の直線（デカルト）移動。<code>pose</code> は World 座標系の <code>[x, y, z, rx, ry, rz]</code>（m/rad、<code>relative=True</code> なら差分）。UR 座標系へ変換し、作業範囲チェック・エンコード・送信。blocking なら <code>convergence_tol</code> 以内に入るまでポーリング。</span><span lang="zh">TCP 的直線（笛卡兒）移動。<code>pose</code> 是 world 座標系的 <code>[x, y, z, rx, ry, rz]</code>（m/rad,<code>relative=True</code> 則為差量）。轉成 UR 座標系、檢查工作範圍、編碼、送出;若 blocking,輪詢到誤差 &lt; <code>convergence_tol</code>。</span> <span class="badge raises">raises WorkspaceViolation · SpeedViolation</span></div></div>
         <div class="api-card"><div class="sig"><span class="nm">move_j</span>(joints, speed=None, accel=None, blocking=True) → None</div>
-          <div class="desc"><span lang="en">Joint-space move. <code>joints</code> = <code>[j0..j5]</code> in radians (frame-independent). Joint-limit checked; if blocking, waits for the TCP pose to settle.</span><span lang="ja">関節空間の移動。<code>joints</code> = <code>[j0..j5]</code>（ラジアン、座標系に非依存）。関節制限をチェックし、blocking なら TCP 姿勢が落ち着くまで待機。</span> <span class="badge raises">raises JointLimitViolation · SpeedViolation</span></div></div>
+          <div class="desc"><span lang="en">Joint-space move. <code>joints</code> = <code>[j0..j5]</code> in radians (frame-independent). Joint-limit checked; if blocking, waits for the TCP pose to settle.</span><span lang="ja">関節空間の移動。<code>joints</code> = <code>[j0..j5]</code>（ラジアン、座標系に非依存）。関節制限をチェックし、blocking なら TCP 姿勢が落ち着くまで待機。</span><span lang="zh">關節空間移動。<code>joints</code> = <code>[j0..j5]</code>（弧度,與座標系無關）。檢查關節上限;若 blocking,等待 TCP 姿態穩定。</span> <span class="badge raises">raises JointLimitViolation · SpeedViolation</span></div></div>
         <div class="api-card"><div class="sig"><span class="nm">get_state</span>() → RobotState</div>
-          <div class="desc"><span lang="en">Parse the latest streamed frame into a <code>RobotState</code> (UR base frame).</span><span lang="ja">最新の状態フレームを <code>RobotState</code>（UR ベース座標系）にパース。</span> <span class="badge raises">raises ValueError</span></div></div>
+          <div class="desc"><span lang="en">Parse the latest streamed frame into a <code>RobotState</code> (UR base frame).</span><span lang="ja">最新の状態フレームを <code>RobotState</code>（UR ベース座標系）にパース。</span><span lang="zh">把最新的狀態 frame 解析成 <code>RobotState</code>（UR 基座座標系）。</span> <span class="badge raises">raises ValueError</span></div></div>
         <div class="api-card"><div class="sig"><span class="nm">stop</span>() → None &nbsp;·&nbsp; <span class="nm">home</span>() → None</div>
-          <div class="desc"><span lang="en"><code>stop()</code> commands an immediate controlled stop (cmd 2, non-blocking). <code>home()</code> moves to <code>config.home_pose</code> (cmd 3).</span><span lang="ja"><code>stop()</code> は即時の制御停止（cmd 2、非ブロッキング）。<code>home()</code> は <code>config.home_pose</code> へ移動（cmd 3）。</span></div></div>
+          <div class="desc"><span lang="en"><code>stop()</code> commands an immediate controlled stop (cmd 2, non-blocking). <code>home()</code> moves to <code>config.home_pose</code> (cmd 3).</span><span lang="ja"><code>stop()</code> は即時の制御停止（cmd 2、非ブロッキング）。<code>home()</code> は <code>config.home_pose</code> へ移動（cmd 3）。</span><span lang="zh"><code>stop()</code> 下達立即受控停止（cmd 2,非阻塞）。<code>home()</code> 移動到 <code>config.home_pose</code>（cmd 3）。</span></div></div>
 
-        <h3>RobotConfig <span style="font-family:var(--sans);font-size:13px;color:var(--fg-faint)"><span lang="en">— all tunables in one place</span><span lang="ja">— 調整項目を一箇所に</span></span></h3>
+        <h3>RobotConfig <span style="font-family:var(--sans);font-size:13px;color:var(--fg-faint)"><span lang="en">— all tunables in one place</span><span lang="ja">— 調整項目を一箇所に</span><span lang="zh">— 所有可調參數集中一處</span></span></h3>
         <div class="table-wrap"><table>
-          <thead><tr><th><span lang="en">field</span><span lang="ja">フィールド</span></th><th><span lang="en">default</span><span lang="ja">デフォルト</span></th><th><span lang="en">meaning</span><span lang="ja">意味</span></th></tr></thead>
+          <thead><tr><th><span lang="en">field</span><span lang="ja">フィールド</span><span lang="zh">欄位</span></th><th><span lang="en">default</span><span lang="ja">デフォルト</span><span lang="zh">預設</span></th><th><span lang="en">meaning</span><span lang="ja">意味</span><span lang="zh">意義</span></th></tr></thead>
           <tbody>
-            <tr><td><code>controller_ip</code></td><td>192.168.0.135</td><td><span lang="en">UR controller IP (daemon upload)</span><span lang="ja">UR コントローラ IP（デーモン送信）</span></td></tr>
-            <tr><td><code>script_port</code></td><td>30001</td><td><span lang="en">controller primary interface</span><span lang="ja">コントローラのプライマリインタフェース</span></td></tr>
-            <tr><td><code>pc_host</code> / <code>state_port</code></td><td>192.168.0.120 / 30002</td><td><span lang="en">where the daemon connects back</span><span lang="ja">デーモンが接続し返す先</span></td></tr>
+            <tr><td><code>controller_ip</code></td><td>192.168.0.135</td><td><span lang="en">UR controller IP (daemon upload)</span><span lang="ja">UR コントローラ IP（デーモン送信）</span><span lang="zh">UR 控制器 IP（daemon 上傳）</span></td></tr>
+            <tr><td><code>script_port</code></td><td>30001</td><td><span lang="en">controller primary interface</span><span lang="ja">コントローラのプライマリインタフェース</span><span lang="zh">控制器 primary 介面</span></td></tr>
+            <tr><td><code>pc_host</code> / <code>state_port</code></td><td>192.168.0.120 / 30002</td><td><span lang="en">where the daemon connects back</span><span lang="ja">デーモンが接続し返す先</span><span lang="zh">daemon 回連的目標</span></td></tr>
             <tr><td><code>default_speed</code> / <code>default_accel</code></td><td>0.1 / 0.1</td><td>m/s, m/s²</td></tr>
-            <tr><td><code>default_move_time</code></td><td>2.0</td><td><span lang="en">s — move/blend duration</span><span lang="ja">s — 移動/ブレンド時間</span></td></tr>
-            <tr><td><code>convergence_tol</code></td><td>1e-3</td><td><span lang="en">blocking-move tolerance (m/rad)</span><span lang="ja">ブロッキング移動の許容差（m/rad）</span></td></tr>
-            <tr><td><code>max_speed</code></td><td>0.25</td><td><span lang="en">hard speed cap (m/s)</span><span lang="ja">速度のハード上限（m/s）</span></td></tr>
-            <tr><td><code>workspace_limits</code></td><td>x(-0.40,0.35) y(0.25,0.80) z(0.0,0.40)</td><td><span lang="en">per-axis bounds (m)</span><span lang="ja">軸ごとの範囲（m）</span></td></tr>
-            <tr><td><code>joint_limits</code></td><td>6 × (-2π, 2π)</td><td><span lang="en">per-joint bounds (rad)</span><span lang="ja">関節ごとの範囲（rad）</span></td></tr>
-            <tr><td><code>home_pose</code></td><td>[-0.06, 0.25, 0.115, 0, -3.14, 0]</td><td><span lang="en">UR base frame</span><span lang="ja">UR ベース座標系</span></td></tr>
+            <tr><td><code>default_move_time</code></td><td>2.0</td><td><span lang="en">s — move/blend duration</span><span lang="ja">s — 移動/ブレンド時間</span><span lang="zh">s — 移動/混合時間</span></td></tr>
+            <tr><td><code>convergence_tol</code></td><td>1e-3</td><td><span lang="en">blocking-move tolerance (m/rad)</span><span lang="ja">ブロッキング移動の許容差（m/rad）</span><span lang="zh">阻塞移動的容差（m/rad）</span></td></tr>
+            <tr><td><code>max_speed</code></td><td>0.25</td><td><span lang="en">hard speed cap (m/s)</span><span lang="ja">速度のハード上限（m/s）</span><span lang="zh">速度硬上限（m/s）</span></td></tr>
+            <tr><td><code>workspace_limits</code></td><td>x(-0.40,0.35) y(0.25,0.80) z(0.0,0.40)</td><td><span lang="en">per-axis bounds (m)</span><span lang="ja">軸ごとの範囲（m）</span><span lang="zh">各軸範圍（m）</span></td></tr>
+            <tr><td><code>joint_limits</code></td><td>6 × (-2π, 2π)</td><td><span lang="en">per-joint bounds (rad)</span><span lang="ja">関節ごとの範囲（rad）</span><span lang="zh">各關節範圍（rad）</span></td></tr>
+            <tr><td><code>home_pose</code></td><td>[-0.06, 0.25, 0.115, 0, -3.14, 0]</td><td><span lang="en">UR base frame</span><span lang="ja">UR ベース座標系</span><span lang="zh">UR 基座座標系</span></td></tr>
           </tbody>
         </table></div>
         <p lang="en">Methods <code>world_to_ur(pose)</code> / <code>ur_to_world(pose)</code> convert between frames (default: negate x and y; z and rotations unchanged) and round-trip to identity.</p>
         <p lang="ja"><code>world_to_ur(pose)</code> / <code>ur_to_world(pose)</code> は座標系を変換し（デフォルト: x と y を反転、z と回転は不変）、往復で元に戻ります。</p>
+        <p lang="zh"><code>world_to_ur(pose)</code> / <code>ur_to_world(pose)</code> 在座標系間轉換（預設:反轉 x 與 y;z 與旋轉不變）,來回轉換會還原。</p>
 
         <h3>RobotState</h3>
 <pre><code><span class="tok-d">@dataclass</span>
@@ -429,29 +442,31 @@ uv pip install --python .venv/bin/python pytest
 
         <h3>safety</h3>
         <div class="api-card"><div class="sig"><span class="nm">check_pose_in_workspace</span>(pose, config) &nbsp;·&nbsp; <span class="nm">check_joints</span>(joints, config) &nbsp;·&nbsp; <span class="nm">clamp_speed</span>(speed, config)</div>
-          <div class="desc"><span lang="en">Pure validators run before any command is sent. Exceptions: <code>WorkspaceViolation</code>, <code>JointLimitViolation</code>, <code>SpeedViolation</code> (all subclass <code>SafetyViolation</code>).</span><span lang="ja">コマンド送信前に実行される純粋なバリデータ。例外: <code>WorkspaceViolation</code>, <code>JointLimitViolation</code>, <code>SpeedViolation</code>（すべて <code>SafetyViolation</code> のサブクラス）。</span></div></div>
+          <div class="desc"><span lang="en">Pure validators run before any command is sent. Exceptions: <code>WorkspaceViolation</code>, <code>JointLimitViolation</code>, <code>SpeedViolation</code> (all subclass <code>SafetyViolation</code>).</span><span lang="ja">コマンド送信前に実行される純粋なバリデータ。例外: <code>WorkspaceViolation</code>, <code>JointLimitViolation</code>, <code>SpeedViolation</code>（すべて <code>SafetyViolation</code> のサブクラス）。</span><span lang="zh">在送出任何指令前執行的純驗證器。例外: <code>WorkspaceViolation</code>, <code>JointLimitViolation</code>, <code>SpeedViolation</code>（皆繼承 <code>SafetyViolation</code>）。</span></div></div>
       </section>
 
       <!-- EXAMPLES -->
       <section id="examples">
-        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></span><h2><span lang="en">Examples</span><span lang="ja">サンプル</span></h2></div>
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></span><h2><span lang="en">Examples</span><span lang="ja">サンプル</span><span lang="zh">範例</span></h2></div>
         <p class="lead" lang="en">Both shipped examples run with <strong>no robot</strong> — one in dry-run, one with a mock force sensor.</p>
         <p class="lead" lang="ja">同梱の 2 つのサンプルは<strong>ロボット無し</strong>で動きます — 一方は dry-run、もう一方はモック力センサ使用。</p>
+        <p class="lead" lang="zh">兩個內附範例都<strong>不需要機器人</strong> — 一個用 dry-run,一個用 mock 力量感測器。</p>
 
-        <h3><span lang="en">Dry-run motion preview</span><span lang="ja">Dry-run モーションプレビュー</span></h3>
+        <h3><span lang="en">Dry-run motion preview</span><span lang="ja">Dry-run モーションプレビュー</span><span lang="zh">Dry-run 動作預覽</span></h3>
         <p lang="en">Build and log commands without opening a socket — safe to run anywhere.</p>
         <p lang="ja">ソケットを開かずにコマンドを構築・ログ出力 — どこでも安全に実行できます。</p>
+        <p lang="zh">不開 socket 就能建構並記錄指令 — 在任何地方都能安全執行。</p>
         <div class="code-cap"><span class="dot"></span>ur5e_control/examples/move_example.py</div>
 <pre><code>.venv/bin/python ur5e_control/examples/move_example.py   <span class="tok-c"># EXIT 0, no sockets opened</span></code></pre>
 
-        <h3><span lang="en">Joint move</span><span lang="ja">関節移動</span></h3>
+        <h3><span lang="en">Joint move</span><span lang="ja">関節移動</span><span lang="zh">關節移動</span></h3>
 <pre><code><span class="tok-k">import</span> math
 <span class="tok-k">from</span> ur5e_control <span class="tok-k">import</span> UR5eRobot, RobotConfig
 
 <span class="tok-k">with</span> UR5eRobot(RobotConfig()) <span class="tok-k">as</span> robot:
     robot.<span class="tok-f">move_j</span>([<span class="tok-n">0</span>, -math.pi/<span class="tok-n">2</span>, math.pi/<span class="tok-n">2</span>, -math.pi/<span class="tok-n">2</span>, -math.pi/<span class="tok-n">2</span>, <span class="tok-n">0</span>], speed=<span class="tok-n">0.2</span>)</code></pre>
 
-        <h3><span lang="en">Reading force / state</span><span lang="ja">力 / 状態の読み取り</span></h3>
+        <h3><span lang="en">Reading force / state</span><span lang="ja">力 / 状態の読み取り</span><span lang="zh">讀取力量 / 狀態</span></h3>
 <pre><code><span class="tok-k">with</span> UR5eRobot(RobotConfig()) <span class="tok-k">as</span> robot:
     s = robot.<span class="tok-f">get_state</span>()
     fx, fy, fz = s.wrench[<span class="tok-n">0</span>], s.wrench[<span class="tok-n">1</span>], s.wrench[<span class="tok-n">2</span>]
@@ -460,48 +475,50 @@ uv pip install --python .venv/bin/python pytest
 
       <!-- SAFETY -->
       <section id="safety">
-        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><h2><span lang="en">Safety</span><span lang="ja">安全</span></h2></div>
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><h2><span lang="en">Safety</span><span lang="ja">安全</span><span lang="zh">安全</span></h2></div>
         <div class="safety-banner">
-          <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span lang="en">This commands a physical robot. Treat every move as live.</span><span lang="ja">これは実機のロボットを操作します。すべての動作を本番として扱ってください。</span></h3>
+          <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span lang="en">This commands a physical robot. Treat every move as live.</span><span lang="ja">これは実機のロボットを操作します。すべての動作を本番として扱ってください。</span><span lang="zh">這會操作真實的機器人。把每一次移動都當成真的。</span></h3>
           <ul class="safety-list">
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><span lang="en"><b>Keep the e-stop within reach.</b> The physical emergency stop on the teach pendant is your real safety device — not <code>robot.stop()</code>.</span><span lang="ja"><b>非常停止を手の届く所に。</b>本当の安全装置はティーチペンダントの物理非常停止であり、<code>robot.stop()</code> ではありません。</span></li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span lang="en"><b>Clear the workspace</b> of people and obstacles before <code>connect()</code>. The first command may move the arm immediately.</span><span lang="ja"><b>作業領域を片付ける。</b><code>connect()</code> の前に人と障害物を除去してください。最初のコマンドで即座にアームが動く可能性があります。</span></li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span lang="en"><b>Start slow.</b> Verify motions at low <code>speed</code> first. Keep <code>max_speed</code> conservative; it is a hard cap, not a suggestion.</span><span lang="ja"><b>低速から。</b>まず低い <code>speed</code> で動作を確認。<code>max_speed</code> は控えめに — これは提案ではなくハード上限です。</span></li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg><span lang="en"><b>Validate <code>workspace_limits</code> for your cell.</b> Defaults come from a different setup. A pose outside bounds raises <code>WorkspaceViolation</code> and is never sent — set them correctly.</span><span lang="ja"><b>あなたのセルに合わせて <code>workspace_limits</code> を検証。</b>デフォルトは別環境のものです。範囲外の姿勢は <code>WorkspaceViolation</code> を送出し送信されません — 正しく設定してください。</span></li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6"/><circle cx="12" cy="12" r="3"/><path d="M2 12h6"/><path d="M22 12h-6"/></svg><span lang="en"><b>Force control is disabled by default.</b> The daemon's <code>cmd 4</code> branch is gated behind <code>FORCE_MODE_ENABLED = False</code> so a stray force command cannot drive the arm into a surface before the FT 300 is validated.</span><span lang="ja"><b>力制御はデフォルトで無効。</b>デーモンの <code>cmd 4</code> 分岐は <code>FORCE_MODE_ENABLED = False</code> でガードされ、FT 300 の検証前に誤った力コマンドでアームを面に押し付けることはありません。</span></li>
-            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span lang="en"><b>Dry-run first.</b> Use the dry-run transport / examples to inspect the exact command strings before any of them reach the controller.</span><span lang="ja"><b>まず dry-run。</b>dry-run トランスポート/サンプルで、コントローラに届く前に正確なコマンド文字列を確認してください。</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><span lang="en"><b>Keep the e-stop within reach.</b> The physical emergency stop on the teach pendant is your real safety device — not <code>robot.stop()</code>.</span><span lang="ja"><b>非常停止を手の届く所に。</b>本当の安全装置はティーチペンダントの物理非常停止であり、<code>robot.stop()</code> ではありません。</span><span lang="zh"><b>讓緊急停止隨手可及。</b>真正的安全裝置是 teach pendant 上的實體急停,而不是 <code>robot.stop()</code>。</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span lang="en"><b>Clear the workspace</b> of people and obstacles before <code>connect()</code>. The first command may move the arm immediately.</span><span lang="ja"><b>作業領域を片付ける。</b><code>connect()</code> の前に人と障害物を除去してください。最初のコマンドで即座にアームが動く可能性があります。</span><span lang="zh"><b>清空工作區。</b>在 <code>connect()</code> 前移除人員與障礙物。第一個指令可能立刻讓機械臂移動。</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span lang="en"><b>Start slow.</b> Verify motions at low <code>speed</code> first. Keep <code>max_speed</code> conservative; it is a hard cap, not a suggestion.</span><span lang="ja"><b>低速から。</b>まず低い <code>speed</code> で動作を確認。<code>max_speed</code> は控えめに — これは提案ではなくハード上限です。</span><span lang="zh"><b>從慢開始。</b>先用低 <code>speed</code> 驗證動作。<code>max_speed</code> 設保守一點;它是硬上限,不是建議值。</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6v6H9z"/></svg><span lang="en"><b>Validate <code>workspace_limits</code> for your cell.</b> Defaults come from a different setup. A pose outside bounds raises <code>WorkspaceViolation</code> and is never sent — set them correctly.</span><span lang="ja"><b>あなたのセルに合わせて <code>workspace_limits</code> を検証。</b>デフォルトは別環境のものです。範囲外の姿勢は <code>WorkspaceViolation</code> を送出し送信されません — 正しく設定してください。</span><span lang="zh"><b>為你的工作單元驗證 <code>workspace_limits</code>。</b>預設值來自不同的設定。超出範圍的姿態會丟出 <code>WorkspaceViolation</code> 且不會送出 — 請正確設定。</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v6"/><circle cx="12" cy="12" r="3"/><path d="M2 12h6"/><path d="M22 12h-6"/></svg><span lang="en"><b>Force control is disabled by default.</b> The daemon's <code>cmd 4</code> branch is gated behind <code>FORCE_MODE_ENABLED = False</code> so a stray force command cannot drive the arm into a surface before the FT 300 is validated.</span><span lang="ja"><b>力制御はデフォルトで無効。</b>デーモンの <code>cmd 4</code> 分岐は <code>FORCE_MODE_ENABLED = False</code> でガードされ、FT 300 の検証前に誤った力コマンドでアームを面に押し付けることはありません。</span><span lang="zh"><b>力量控制預設關閉。</b>daemon 的 <code>cmd 4</code> 分支被 <code>FORCE_MODE_ENABLED = False</code> 鎖住,因此在 FT 300 驗證前,誤送的力量指令不會把手臂壓向表面。</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span lang="en"><b>Dry-run first.</b> Use the dry-run transport / examples to inspect the exact command strings before any of them reach the controller.</span><span lang="ja"><b>まず dry-run。</b>dry-run トランスポート/サンプルで、コントローラに届く前に正確なコマンド文字列を確認してください。</span><span lang="zh"><b>先 dry-run。</b>用 dry-run 傳輸/範例,在任何指令送到控制器前先檢查確切的指令字串。</span></li>
           </ul>
         </div>
         <div class="callout danger" style="margin-top:18px">
           <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
-          <div class="body"><span lang="en"><b>Verification scope.</b> This library is tested only at the code level (parsing, command encoding, safety validation, control law via mocks). <b>Motion correctness on real hardware has not been verified</b> and must be confirmed by the operator on the actual UR5e + cell.</span><span lang="ja"><b>検証範囲。</b>このライブラリはコードレベル（パース・コマンドエンコード・安全検証・モックによる制御則）でのみテストされています。<b>実機での動作の正しさは検証されておらず</b>、実際の UR5e とセルで操作者が確認する必要があります。</span></div>
+          <div class="body"><span lang="en"><b>Verification scope.</b> This library is tested only at the code level (parsing, command encoding, safety validation, control law via mocks). <b>Motion correctness on real hardware has not been verified</b> and must be confirmed by the operator on the actual UR5e + cell.</span><span lang="ja"><b>検証範囲。</b>このライブラリはコードレベル（パース・コマンドエンコード・安全検証・モックによる制御則）でのみテストされています。<b>実機での動作の正しさは検証されておらず</b>、実際の UR5e とセルで操作者が確認する必要があります。</span><span lang="zh"><b>驗證範圍。</b>這個函式庫只在程式碼層級測試（解析、指令編碼、安全驗證、用 mock 測控制律）。<b>實機上的動作正確性尚未驗證</b>,必須由操作者在實際的 UR5e 與工作單元上確認。</span></div>
         </div>
       </section>
 
       <!-- FORCE CONTROL -->
       <section id="force">
-        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v6"/><path d="M12 22v-6"/><path d="M2 12h6"/><path d="M22 12h-6"/></svg></span><h2><span lang="en">Force Control</span><span lang="ja">力制御</span> <span class="badge">Robotiq FT 300 · <span lang="en">forward-looking</span><span lang="ja">将来対応</span></span></h2></div>
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v6"/><path d="M12 22v-6"/><path d="M2 12h6"/><path d="M22 12h-6"/></svg></span><h2><span lang="en">Force Control</span><span lang="ja">力制御</span><span lang="zh">力量控制</span> <span class="badge">Robotiq FT 300 · <span lang="en">forward-looking</span><span lang="ja">将来対応</span><span lang="zh">前瞻</span></span></h2></div>
         <p class="lead" lang="en">Move along a direction until contact force reaches a target, then hold compliantly (impedance). Interfaces and the control law are implemented and mock-tested; on-robot tuning happens once the FT 300 is mounted.</p>
         <p class="lead" lang="ja">ある方向へ接触力が目標に達するまで移動し、その後コンプライアントに（インピーダンス）保持します。インタフェースと制御則は実装・モックテスト済み。実機調整は FT 300 装着後に行います。</p>
+        <p class="lead" lang="zh">沿某方向移動直到接觸力達到目標,然後以順應方式（impedance）維持。介面與控制律已實作並用 mock 測試;實機調校在 FT 300 裝上後進行。</p>
 
         <div class="callout warn">
           <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
-          <div class="body"><span lang="en"><b>Pending hardware validation.</b> Step size, stiffness, threshold and <code>max_travel</code> are placeholders to tune on the real sensor. The daemon's force branch stays disabled until you set <code>FORCE_MODE_ENABLED = True</code> in <code>motion_daemon.script</code> after validation.</span><span lang="ja"><b>ハードウェア検証待ち。</b>ステップ幅・剛性・しきい値・<code>max_travel</code> は実センサで調整するプレースホルダです。デーモンの力分岐は、検証後に <code>motion_daemon.script</code> で <code>FORCE_MODE_ENABLED = True</code> に設定するまで無効のままです。</span></div>
+          <div class="body"><span lang="en"><b>Pending hardware validation.</b> Step size, stiffness, threshold and <code>max_travel</code> are placeholders to tune on the real sensor. The daemon's force branch stays disabled until you set <code>FORCE_MODE_ENABLED = True</code> in <code>motion_daemon.script</code> after validation.</span><span lang="ja"><b>ハードウェア検証待ち。</b>ステップ幅・剛性・しきい値・<code>max_travel</code> は実センサで調整するプレースホルダです。デーモンの力分岐は、検証後に <code>motion_daemon.script</code> で <code>FORCE_MODE_ENABLED = True</code> に設定するまで無効のままです。</span><span lang="zh"><b>待硬體驗證。</b>步長、剛性、閾值與 <code>max_travel</code> 都是要在實感測器上調的佔位值。daemon 的力量分支會保持關閉,直到你在驗證後於 <code>motion_daemon.script</code> 設定 <code>FORCE_MODE_ENABLED = True</code>。</span></div>
         </div>
 
-        <h3><span lang="en">Sensor abstraction</span><span lang="ja">センサ抽象化</span></h3>
+        <h3><span lang="en">Sensor abstraction</span><span lang="ja">センサ抽象化</span><span lang="zh">感測器抽象</span></h3>
         <p lang="en">A pluggable <code>ForceSensor</code> isolates the read path so the rest of the code never changes when you swap mock → real:</p>
         <p lang="ja">差し替え可能な <code>ForceSensor</code> が読み取り経路を隔離するため、mock → 実機 の切り替えでも他のコードは変わりません:</p>
+        <p lang="zh">可替換的 <code>ForceSensor</code> 隔離了讀取路徑,因此從 mock 換成實機時,其餘程式碼都不需更動:</p>
         <div class="table-wrap"><table>
-          <thead><tr><th><span lang="en">class</span><span lang="ja">クラス</span></th><th><span lang="en">use</span><span lang="ja">用途</span></th></tr></thead>
+          <thead><tr><th><span lang="en">class</span><span lang="ja">クラス</span><span lang="zh">類別</span></th><th><span lang="en">use</span><span lang="ja">用途</span><span lang="zh">用途</span></th></tr></thead>
           <tbody>
             <tr><td><code>ForceSensor</code></td><td>ABC — <code>read() → [fx,fy,fz,tx,ty,tz]</code>, <code>zero()</code></td></tr>
-            <tr><td><code>RobotiqFT300(state_provider)</code></td><td><span lang="en">real sensor; reads the wrench via a state provider (URCap-fed stream now, or a PC-side driver later)</span><span lang="ja">実センサ; state provider 経由でレンチを読む（現状は URCap 供給ストリーム、将来は PC 側ドライバ）</span></td></tr>
-            <tr><td><code>MockForceSensor(sequence)</code></td><td><span lang="en">scripted wrenches — test the control law with no hardware</span><span lang="ja">スクリプト化したレンチ — ハードウェア無しで制御則をテスト</span></td></tr>
+            <tr><td><code>RobotiqFT300(state_provider)</code></td><td><span lang="en">real sensor; reads the wrench via a state provider (URCap-fed stream now, or a PC-side driver later)</span><span lang="ja">実センサ; state provider 経由でレンチを読む（現状は URCap 供給ストリーム、将来は PC 側ドライバ）</span><span lang="zh">實感測器;透過 state provider 讀取 wrench（現為 URCap 供給的串流,日後為 PC 端 driver）</span></td></tr>
+            <tr><td><code>MockForceSensor(sequence)</code></td><td><span lang="en">scripted wrenches — test the control law with no hardware</span><span lang="ja">スクリプト化したレンチ — ハードウェア無しで制御則をテスト</span><span lang="zh">腳本化的 wrench — 無硬體即可測試控制律</span></td></tr>
           </tbody>
         </table></div>
 
-        <h3><span lang="en">approach-until-force, then hold</span><span lang="ja">力に達するまで接近して保持</span></h3>
+        <h3><span lang="en">approach-until-force, then hold</span><span lang="ja">力に達するまで接近して保持</span><span lang="zh">接近到受力後維持</span></h3>
         <div class="code-cap"><span class="dot"></span>force demo (mock)</div>
 <pre><code><span class="tok-k">from</span> ur5e_control.force.sensor <span class="tok-k">import</span> MockForceSensor
 <span class="tok-k">from</span> ur5e_control.force.controller <span class="tok-k">import</span> ForceController
@@ -518,21 +535,22 @@ fc.<span class="tok-f">approach_until_force</span>(
 )</code></pre>
         <p lang="en">The law reads <em>before</em> each step (no overshoot): below-target reads issue one relative step along the unit direction; the contact read stops stepping and emits the <code>cmd 4</code> hold. Contact is decided on the force <em>projected onto the direction</em>, so side forces never false-trigger. Exceeding <code>max_travel</code> raises <code>RuntimeError</code> and emits no hold.</p>
         <p lang="ja">制御則は各ステップの<em>前</em>に読み取ります（オーバーシュート無し）: 目標未満の読み取りでは単位方向に 1 ステップだけ相対移動し、接触の読み取りでステップを止めて <code>cmd 4</code> の保持を送出します。接触は<em>方向へ射影した力</em>で判定するため、横方向の力で誤作動しません。<code>max_travel</code> を超えると <code>RuntimeError</code> を送出し保持は出しません。</p>
+        <p lang="zh">控制律在每一步<em>之前</em>讀取（不會超衝）: 未達目標的讀值會沿單位方向送一個相對步;接觸的讀值則停止前進並送出 <code>cmd 4</code> 維持。接觸是用<em>投影到方向上的力</em>判定,因此側向力不會誤觸發。超過 <code>max_travel</code> 會丟出 <code>RuntimeError</code> 且不送出維持。</p>
       </section>
 
       <!-- TROUBLESHOOTING -->
       <section id="troubleshooting">
-        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><h2><span lang="en">Troubleshooting</span><span lang="ja">トラブルシューティング</span></h2></div>
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><h2><span lang="en">Troubleshooting</span><span lang="ja">トラブルシューティング</span><span lang="zh">疑難排解</span></h2></div>
         <div class="table-wrap"><table>
-          <thead><tr><th><span lang="en">symptom</span><span lang="ja">症状</span></th><th><span lang="en">likely cause &amp; fix</span><span lang="ja">原因と対処</span></th></tr></thead>
+          <thead><tr><th><span lang="en">symptom</span><span lang="ja">症状</span><span lang="zh">症狀</span></th><th><span lang="en">likely cause &amp; fix</span><span lang="ja">原因と対処</span><span lang="zh">可能原因與處理</span></th></tr></thead>
           <tbody>
-            <tr><td><span lang="en">Daemon won't start / no state arrives</span><span lang="ja">デーモンが起動しない / 状態が来ない</span></td><td><span lang="en">The robot must be in <b>remote control</b> mode. Confirm the daemon uploads cleanly (watch the PolyScope log) and that the controller can reach <code>pc_host:state_port</code> — the daemon connects <em>back</em> to the PC, so a PC firewall blocking <code>30002</code> is a common culprit.</span><span lang="ja">ロボットが<b>リモートコントロール</b>モードである必要があります。デーモンが正常にアップロードされるか（PolyScope ログを確認）、コントローラが <code>pc_host:state_port</code> に到達できるかを確認 — デーモンは PC へ接続し<em>返す</em>ため、PC のファイアウォールが <code>30002</code> をブロックしているのがよくある原因です。</span></td></tr>
-            <tr><td><span lang="en"><code>ValueError</code> from <code>get_state()</code></span><span lang="ja"><code>get_state()</code> が <code>ValueError</code></span></td><td><span lang="en">No complete state frame yet. Allow a moment after <code>connect()</code> for the stream to start, then retry.</span><span lang="ja">まだ完全な状態フレームがありません。<code>connect()</code> 後にストリームが始まるまで少し待ってから再試行してください。</span></td></tr>
-            <tr><td><span lang="en"><code>WorkspaceViolation</code> on a valid-looking pose</span><span lang="ja">一見正しい姿勢で <code>WorkspaceViolation</code></span></td><td><span lang="en">Default <code>workspace_limits</code> are for a different cell. Set them for your setup. Remember <code>move_l</code> input is <b>world frame</b>; the check runs after <code>world_to_ur</code>.</span><span lang="ja">デフォルトの <code>workspace_limits</code> は別セル用です。自分の環境に設定してください。<code>move_l</code> の入力は <b>World 座標系</b>で、チェックは <code>world_to_ur</code> の後に実行されます。</span></td></tr>
-            <tr><td><span lang="en">Blocking move raises <code>TimeoutError</code></span><span lang="ja">ブロッキング移動が <code>TimeoutError</code></span></td><td><span lang="en">Pose never converged within the poll budget. Check the state stream is live and that <code>convergence_tol</code> isn't unreachably tight (mixing m and rad in one tolerance).</span><span lang="ja">ポーリング予算内に姿勢が収束しませんでした。状態ストリームが生きているか、<code>convergence_tol</code> が厳しすぎないか（m と rad を一つの許容差に混在）を確認。</span></td></tr>
-            <tr><td><span lang="en">Controller rejects the uploaded script</span><span lang="ja">コントローラがアップロードしたスクリプトを拒否</span></td><td><span lang="en">The daemon must be <b>raw URScript</b> (no Python wrapper). <code>script_sender</code> sends the file verbatim; the controller auto-runs the single routine it receives.</span><span lang="ja">デーモンは<b>生の URScript</b>（Python ラッパー無し）である必要があります。<code>script_sender</code> はファイルをそのまま送信し、コントローラは受信した単一ルーチンを自動実行します。</span></td></tr>
-            <tr><td><span lang="en">Force command does nothing</span><span lang="ja">力コマンドが何もしない</span></td><td><span lang="en">Expected until validated: <code>FORCE_MODE_ENABLED = False</code> in the daemon. Enable only after FT 300 bring-up.</span><span lang="ja">検証までは想定どおり: デーモンで <code>FORCE_MODE_ENABLED = False</code>。FT 300 立ち上げ後にのみ有効化してください。</span></td></tr>
-            <tr><td><span lang="en">Robot moves the wrong way in X/Y</span><span lang="ja">ロボットが X/Y で逆方向に動く</span></td><td><span lang="en">Frame convention. <code>world_to_ur</code> negates x and y by default — adjust the transform in <code>RobotConfig</code> for your world frame.</span><span lang="ja">座標系の規約です。<code>world_to_ur</code> はデフォルトで x と y を反転します — 自分の World 座標系に合わせて <code>RobotConfig</code> の変換を調整してください。</span></td></tr>
+            <tr><td><span lang="en">Daemon won't start / no state arrives</span><span lang="ja">デーモンが起動しない / 状態が来ない</span><span lang="zh">daemon 不啟動 / 沒有狀態回來</span></td><td><span lang="en">The robot must be in <b>remote control</b> mode. Confirm the daemon uploads cleanly (watch the PolyScope log) and that the controller can reach <code>pc_host:state_port</code> — the daemon connects <em>back</em> to the PC, so a PC firewall blocking <code>30002</code> is a common culprit.</span><span lang="ja">ロボットが<b>リモートコントロール</b>モードである必要があります。デーモンが正常にアップロードされるか（PolyScope ログを確認）、コントローラが <code>pc_host:state_port</code> に到達できるかを確認 — デーモンは PC へ接続し<em>返す</em>ため、PC のファイアウォールが <code>30002</code> をブロックしているのがよくある原因です。</span><span lang="zh">機器人必須處於<b>遠端控制</b>模式。確認 daemon 正常上傳（看 PolyScope log）,以及控制器能連到 <code>pc_host:state_port</code> — daemon 會<em>回連</em> PC,所以 PC 防火牆擋掉 <code>30002</code> 是常見原因。</span></td></tr>
+            <tr><td><span lang="en"><code>ValueError</code> from <code>get_state()</code></span><span lang="ja"><code>get_state()</code> が <code>ValueError</code></span><span lang="zh"><code>get_state()</code> 丟出 <code>ValueError</code></span></td><td><span lang="en">No complete state frame yet. Allow a moment after <code>connect()</code> for the stream to start, then retry.</span><span lang="ja">まだ完全な状態フレームがありません。<code>connect()</code> 後にストリームが始まるまで少し待ってから再試行してください。</span><span lang="zh">還沒有完整的狀態 frame。<code>connect()</code> 後稍等串流開始再重試。</span></td></tr>
+            <tr><td><span lang="en"><code>WorkspaceViolation</code> on a valid-looking pose</span><span lang="ja">一見正しい姿勢で <code>WorkspaceViolation</code></span><span lang="zh">看起來正常的姿態卻 <code>WorkspaceViolation</code></span></td><td><span lang="en">Default <code>workspace_limits</code> are for a different cell. Set them for your setup. Remember <code>move_l</code> input is <b>world frame</b>; the check runs after <code>world_to_ur</code>.</span><span lang="ja">デフォルトの <code>workspace_limits</code> は別セル用です。自分の環境に設定してください。<code>move_l</code> の入力は <b>World 座標系</b>で、チェックは <code>world_to_ur</code> の後に実行されます。</span><span lang="zh">預設 <code>workspace_limits</code> 是別的工作單元用的。請設成你的環境。記得 <code>move_l</code> 輸入是 <b>world 座標系</b>,檢查是在 <code>world_to_ur</code> 之後執行。</span></td></tr>
+            <tr><td><span lang="en">Blocking move raises <code>TimeoutError</code></span><span lang="ja">ブロッキング移動が <code>TimeoutError</code></span><span lang="zh">阻塞移動丟出 <code>TimeoutError</code></span></td><td><span lang="en">Pose never converged within the poll budget. Check the state stream is live and that <code>convergence_tol</code> isn't unreachably tight (mixing m and rad in one tolerance).</span><span lang="ja">ポーリング予算内に姿勢が収束しませんでした。状態ストリームが生きているか、<code>convergence_tol</code> が厳しすぎないか（m と rad を一つの許容差に混在）を確認。</span><span lang="zh">姿態在輪詢預算內未收斂。確認狀態串流是否還活著,以及 <code>convergence_tol</code> 是否過嚴（把 m 與 rad 混在同一個容差）。</span></td></tr>
+            <tr><td><span lang="en">Controller rejects the uploaded script</span><span lang="ja">コントローラがアップロードしたスクリプトを拒否</span><span lang="zh">控制器拒絕上傳的腳本</span></td><td><span lang="en">The daemon must be <b>raw URScript</b> (no Python wrapper). <code>script_sender</code> sends the file verbatim; the controller auto-runs the single routine it receives.</span><span lang="ja">デーモンは<b>生の URScript</b>（Python ラッパー無し）である必要があります。<code>script_sender</code> はファイルをそのまま送信し、コントローラは受信した単一ルーチンを自動実行します。</span><span lang="zh">daemon 必須是<b>純 URScript</b>（沒有 Python wrapper）。<code>script_sender</code> 原樣送出檔案;控制器會自動執行收到的單一 routine。</span></td></tr>
+            <tr><td><span lang="en">Force command does nothing</span><span lang="ja">力コマンドが何もしない</span><span lang="zh">力量指令沒反應</span></td><td><span lang="en">Expected until validated: <code>FORCE_MODE_ENABLED = False</code> in the daemon. Enable only after FT 300 bring-up.</span><span lang="ja">検証までは想定どおり: デーモンで <code>FORCE_MODE_ENABLED = False</code>。FT 300 立ち上げ後にのみ有効化してください。</span><span lang="zh">驗證前是預期行為: daemon 裡 <code>FORCE_MODE_ENABLED = False</code>。只有在 FT 300 上線後才啟用。</span></td></tr>
+            <tr><td><span lang="en">Robot moves the wrong way in X/Y</span><span lang="ja">ロボットが X/Y で逆方向に動く</span><span lang="zh">機器人在 X/Y 往反方向動</span></td><td><span lang="en">Frame convention. <code>world_to_ur</code> negates x and y by default — adjust the transform in <code>RobotConfig</code> for your world frame.</span><span lang="ja">座標系の規約です。<code>world_to_ur</code> はデフォルトで x と y を反転します — 自分の World 座標系に合わせて <code>RobotConfig</code> の変換を調整してください。</span><span lang="zh">座標系慣例。<code>world_to_ur</code> 預設反轉 x 與 y — 請依你的 world 座標系調整 <code>RobotConfig</code> 的轉換。</span></td></tr>
           </tbody>
         </table></div>
       </section>
@@ -551,10 +569,11 @@ fc.<span class="tok-f">approach_until_force</span>(
   bd&&bd.addEventListener('click',close);
   document.querySelectorAll('nav.toc a').forEach(function(a){a.addEventListener('click',close);});
 
-  // language toggle
+  // language toggle (en / ja / zh)
+  var LANGS={en:1,ja:1,zh:1};
   var btns=[].slice.call(document.querySelectorAll('.lang-toggle button'));
   function setLang(l){
-    if(l!=='ja')l='en';
+    if(!LANGS[l])l='en';
     root.setAttribute('data-lang',l); root.setAttribute('lang',l);
     try{localStorage.setItem('u5lang',l);}catch(e){}
     btns.forEach(function(b){var on=b.getAttribute('data-set-lang')===l;b.classList.toggle('active',on);b.setAttribute('aria-pressed',on?'true':'false');});
