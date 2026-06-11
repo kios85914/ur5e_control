@@ -64,13 +64,18 @@ class UR5eRobot:
         config: Robot configuration supplying network endpoints, motion defaults,
             safety limits, and the world<->UR frame transform. Defaults to a fresh
             :class:`RobotConfig`.
+        dry_run: When ``True``, no real sockets are opened and the daemon is not
+            uploaded — :meth:`connect`/:meth:`disconnect` and every move just log.
+            Useful for previewing commands or driving the GUI with no robot
+            present. Defaults to ``False`` (talk to the real controller).
     """
 
-    def __init__(self, config: RobotConfig = RobotConfig()) -> None:
+    def __init__(self, config: RobotConfig = RobotConfig(), dry_run: bool = False) -> None:
         self.config = config
+        self.dry_run = dry_run
         # Compose the transport and motion layers. No sockets are opened yet;
         # RobotConnection only binds/listens at start() (called by connect()).
-        self._connection = RobotConnection(config)
+        self._connection = RobotConnection(config, dry_run=dry_run)
         self._motion = MotionController(self._connection, config)
 
     # ------------------------------------------------------------------
@@ -88,7 +93,7 @@ class UR5eRobot:
         the daemon is running before it tries to connect back to the PC.
         """
         script = load_script()
-        send_script(script, self.config)
+        send_script(script, self.config, dry_run=self.dry_run)
         self._connection.start()
 
     def disconnect(self) -> None:
@@ -147,16 +152,35 @@ class UR5eRobot:
         """Command an immediate controlled stop (cmd=2, via MotionController)."""
         self._motion.stop()
 
-    def home(self) -> None:
+    def home(
+        self,
+        speed: Optional[float] = None,
+        accel: Optional[float] = None,
+        blocking: bool = True,
+    ) -> None:
         """Move to the configured home pose (cmd=3, via MotionController).
 
         The daemon homes to ``config.home_pose`` (UR base frame, meters/radians).
+
+        Args:
+            speed: Speed in m/s. ``None`` uses ``config.default_speed``.
+            accel: Acceleration in m/s^2. ``None`` uses ``config.default_accel``.
+            blocking: If ``True``, block until converged on the home pose.
         """
-        self._motion.home()
+        self._motion.home(speed=speed, accel=accel, blocking=blocking)
 
     # ------------------------------------------------------------------
     # State
     # ------------------------------------------------------------------
+    def is_daemon_connected(self) -> bool:
+        """Return ``True`` if the URScript daemon has connected back to the PC.
+
+        Distinct from having called :meth:`connect`: after ``connect()`` the PC is
+        listening, but the daemon on the controller may not have dialed back yet.
+        Always ``False`` in ``dry_run`` mode. Useful for a UI status indicator.
+        """
+        return self._connection.is_connected()
+
     def get_state(self) -> RobotState:
         """Return the latest robot state as a parsed :class:`RobotState`.
 

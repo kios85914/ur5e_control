@@ -14,4 +14,8 @@ pythonpath = ["."]
 addopts = "-q"
 
 [tool.setuptools]
-packages = ["ur5e_control", "ur5e_control.force"]
+packages = ["ur5e_control", "ur5e_control.force", "ur5e_control.gui"]
+
+[tool.setuptools.package-data]
+"ur5e_control.gui" = ["index.html"]
+"ur5e_control.urscript" = ["*.script"]

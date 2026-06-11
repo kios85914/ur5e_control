@@ -46,8 +46,6 @@ if _PROJECT_ROOT not in sys.path:
     sys.path.insert(0, _PROJECT_ROOT)
 
 from ur5e_control.config import RobotConfig
-from ur5e_control.connection import RobotConnection
-from ur5e_control.motion import MotionController
 from ur5e_control.robot import UR5eRobot
 
 # A demo target pose in the WORLD frame, [x, y, z, rx, ry, rz] (meters/radians).
@@ -57,60 +55,14 @@ from ur5e_control.robot import UR5eRobot
 _DEMO_POSE_WORLD = [-0.06, -0.30, 0.20, 0.0, -3.14, 0.0]
 
 
-def _make_dry_run_robot(config: RobotConfig) -> UR5eRobot:
-    """Build a :class:`UR5eRobot` wired for a no-socket dry-run preview.
-
-    The robot is constructed normally, then its transport is swapped for a
-    :class:`~ur5e_control.connection.RobotConnection` in ``dry_run`` mode (which
-    logs instead of touching the network) and its
-    :class:`~ur5e_control.motion.MotionController` is rebuilt on top of that
-    dry-run transport. Its :meth:`~ur5e_control.robot.UR5eRobot.connect` /
-    :meth:`~ur5e_control.robot.UR5eRobot.disconnect` are replaced with versions
-    that only start/stop the dry-run transport (no URScript upload, no real
-    socket), so the public context-manager / motion API can be exercised exactly
-    as on real hardware while opening nothing.
-
-    Args:
-        config: Robot configuration (network endpoints, motion defaults, frame
-            transform). Units are meters/radians; geometry is UR base frame.
-
-    Returns:
-        A :class:`UR5eRobot` whose every command is logged rather than sent.
-    """
-    robot = UR5eRobot(config)
-
-    dry_conn = RobotConnection(config, dry_run=True)
-    # Re-wire the facade's private collaborators onto the dry-run transport.
-    motion = MotionController(dry_conn, config)
-    robot._connection = dry_conn
-    robot._motion = motion
-
-    # The locked UR5eRobot.home() blocks by default, which would poll a state
-    # stream that does not exist in dry-run (eventually timing out). Force the
-    # home move non-blocking here so the preview just logs the home command.
-    _blocking_home = motion.home
-
-    def _home_nonblocking() -> None:
-        """Send the home command without waiting on an (absent) state stream."""
-        _blocking_home(blocking=False)
-
-    motion.home = _home_nonblocking  # type: ignore[assignment]
-
-    # Replace lifecycle so connect()/the context manager never upload a script
-    # or open a real socket; they just bring the dry-run transport up/down.
-    robot.connect = dry_conn.start  # type: ignore[assignment]
-    robot.disconnect = dry_conn.close  # type: ignore[assignment]
-    return robot
-
-
 def main(dry_run: bool = True) -> None:
     """Run the move/get_state/home demo against a UR5e (or a dry-run preview).
 
     Args:
-        dry_run: When ``True`` (the default), build a no-socket dry-run robot via
-            :func:`_make_dry_run_robot` so the example previews the commands it
-            would send without touching hardware. When ``False``, drive a real
-            robot through :class:`UR5eRobot` over actual sockets.
+        dry_run: When ``True`` (the default), build the robot with
+            ``UR5eRobot(config, dry_run=True)`` so the example previews the
+            commands it would send without uploading a script or opening a real
+            socket. When ``False``, drive a real robot over actual sockets.
 
     Notes:
         In dry-run mode the daemon state stream is absent, so this uses
@@ -125,7 +77,7 @@ def main(dry_run: bool = True) -> None:
     print(f"== UR5e move example — mode: {mode} ==")
     print(f"controller_ip={config.controller_ip}  pc_host={config.pc_host}")
 
-    robot = _make_dry_run_robot(config) if dry_run else UR5eRobot(config)
+    robot = UR5eRobot(config, dry_run=dry_run)
 
     # In dry-run there is no state stream to converge against, so don't block on
     # convergence; on a real robot we want blocking moves.
@@ -146,7 +98,7 @@ def main(dry_run: bool = True) -> None:
             print(f"   (no live state available: {exc})")
 
         print(f"\n3) home to {config.home_pose} (UR base frame)")
-        robot.home()
+        robot.home(blocking=blocking)
 
     print("\nDone. (Context manager disconnected the robot.)")
 

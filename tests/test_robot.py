@@ -195,7 +195,7 @@ def test_home_delegates_to_motion_controller(patched):
     """home() delegates to MotionController.home (which sends cmd=3)."""
     robot = UR5eRobot()
     robot.home()
-    patched.motion.home.assert_called_once_with()
+    patched.motion.home.assert_called_once_with(speed=None, accel=None, blocking=True)
 
 
 def test_stop_delegates_to_motion_controller(patched):
