@@ -343,6 +343,61 @@ python -m ur5e_control.gui         <span class="tok-c"># then open http://127.0.
           <span><i style="background:#38BDF8"></i><span lang="en">state (controller → PC)</span><span lang="ja">状態（コントローラ → PC）</span><span lang="zh">state（控制器 → PC）</span></span>
         </div>
 
+        <h3><span lang="en">How data flows through the code (call order)</span><span lang="ja">コード内のデータの流れ（呼び出し順）</span><span lang="zh">資料如何在程式碼間流動(呼叫順序)</span></h3>
+        <p lang="en">Same nodes, zoomed in: a command you call is encoded layer by layer on the way <b>down</b> to the robot; the robot's state is parsed layer by layer on the way <b>up</b> into a <code>RobotState</code>. The label on each step is the data handed to the next node.</p>
+        <p lang="ja">同じノードの拡大図: あなたが呼ぶコマンドは<b>下り</b>で層ごとにエンコードされ機器人へ、機器人の状態は<b>上り</b>で層ごとにパースされ <code>RobotState</code> になります。各ステップのラベルが次のノードへ渡すデータです。</p>
+        <p lang="zh">同樣的節點放大看:你呼叫的指令在<b>下行</b>時一層層被編碼送到機器人;機器人的狀態在<b>上行</b>時一層層被解析成 <code>RobotState</code>。每一步的標籤就是傳給下一個節點的資料。</p>
+        <div class="diagram-wrap">
+        <svg class="dataflow" viewBox="0 0 820 510" role="img" aria-labelledby="flowTitle" preserveAspectRatio="xMidYMin meet">
+          <title id="flowTitle">How a command flows down through the code nodes to the robot, and how state flows back up into a RobotState</title>
+          <defs>
+            <marker id="cmdDown" markerWidth="10" markerHeight="10" refX="3" refY="7.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L6,0 L3,8 Z" fill="#22C55E"/></marker>
+            <marker id="stUp" markerWidth="10" markerHeight="10" refX="3" refY="0.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M3,0 L6,8 L0,8 Z" fill="#38BDF8"/></marker>
+          </defs>
+
+          <!-- path headers -->
+          <text x="130" y="34" text-anchor="middle" fill="#22C55E" font-family="JetBrains Mono,monospace" font-size="11" letter-spacing="1"><tspan lang="en">COMMAND (down)</tspan><tspan lang="ja">コマンド(下り)</tspan><tspan lang="zh">指令(下行)</tspan></text>
+          <text x="690" y="34" text-anchor="middle" fill="#38BDF8" font-family="JetBrains Mono,monospace" font-size="11" letter-spacing="1"><tspan lang="en">STATE (up)</tspan><tspan lang="ja">状態(上り)</tspan><tspan lang="zh">狀態(上行)</tspan></text>
+
+          <!-- long flow arrows -->
+          <line x1="247" y1="92" x2="247" y2="430" stroke="#22C55E" stroke-width="2" marker-end="url(#cmdDown)"/>
+          <line x1="573" y1="430" x2="573" y2="92" stroke="#38BDF8" stroke-width="2" marker-end="url(#stUp)"/>
+
+          <!-- central node boxes -->
+          <g font-family="JetBrains Mono,monospace" font-size="13" fill="#E2E8F0" text-anchor="middle">
+            <rect x="265" y="58" width="290" height="40" rx="8" fill="#14532d2e" stroke="#15803d"/><text x="410" y="83"><tspan lang="en">your Python code</tspan><tspan lang="ja">あなたの Python コード</tspan><tspan lang="zh">你的 Python 程式</tspan></text>
+            <rect x="265" y="128" width="290" height="40" rx="8" fill="#131C30" stroke="#2C3A52"/><text x="410" y="153">UR5eRobot</text>
+            <rect x="265" y="198" width="290" height="40" rx="8" fill="#131C30" stroke="#2C3A52"/><text x="410" y="223">MotionController  ·  parse_state</text>
+            <rect x="265" y="268" width="290" height="40" rx="8" fill="#131C30" stroke="#2C3A52"/><text x="410" y="293">RobotConnection</text>
+            <rect x="265" y="350" width="290" height="40" rx="8" fill="#0c1426" stroke="#0c4a6e"/><text x="410" y="375">motion_daemon.script</text>
+            <rect x="265" y="420" width="290" height="40" rx="8" fill="#0c1426" stroke="#475569"/><text x="410" y="445">UR5e arm</text>
+          </g>
+          <!-- TCP divider -->
+          <line x1="265" y1="330" x2="555" y2="330" stroke="#475569" stroke-dasharray="4 4"/>
+          <text x="560" y="334" fill="#7C8AA3" font-family="JetBrains Mono,monospace" font-size="9">TCP/IP</text>
+
+          <!-- COMMAND labels (left, right-aligned), code = shared -->
+          <g font-family="JetBrains Mono,monospace" font-size="9" fill="#86efac" text-anchor="end">
+            <text x="238" y="116">move_l(pose) | move_j(joints)</text>
+            <text x="238" y="186">facade delegates</text>
+            <text x="238" y="256">world_to_ur + safety + encode</text>
+            <text x="238" y="332">"(cmd, a0..a5, accel, vel, time)"</text>
+            <text x="238" y="408">dispatch -&gt; movel / movej</text>
+          </g>
+          <!-- STATE labels (right, left-aligned), code = shared -->
+          <g font-family="JetBrains Mono,monospace" font-size="9" fill="#7dd3fc" text-anchor="start">
+            <text x="582" y="408">get_actual_tcp_pose() ...</text>
+            <text x="582" y="332">"p[pose]_p[speed]_[joints]_p[wrench]+"</text>
+            <text x="582" y="256">latest_state() raw string</text>
+            <text x="582" y="186">parse_state() -&gt; RobotState</text>
+            <text x="582" y="116">get_state() -&gt; RobotState</text>
+          </g>
+
+          <!-- world<->UR note -->
+          <text x="410" y="486" text-anchor="middle" fill="#64748b" font-family="JetBrains Mono,monospace" font-size="9"><tspan lang="en">commands: world frame -> UR frame (config.world_to_ur).  state: raw UR frame (no transform).</tspan><tspan lang="ja">コマンド: world -> UR 座標 (config.world_to_ur)。 状態: 生の UR 座標 (変換なし)。</tspan><tspan lang="zh">指令: world -> UR 座標 (config.world_to_ur)。 狀態: 原始 UR 座標 (不轉換)。</tspan></text>
+        </svg>
+        </div>
+
         <h3><span lang="en">Layers</span><span lang="ja">レイヤー</span><span lang="zh">各層</span></h3>
         <div class="table-wrap"><table>
           <thead><tr><th><span lang="en">module</span><span lang="ja">モジュール</span><span lang="zh">模組</span></th><th><span lang="en">responsibility</span><span lang="ja">責務</span><span lang="zh">責任</span></th></tr></thead>
@@ -476,6 +531,26 @@ python -m ur5e_control.gui         <span class="tok-c"># then open http://127.0.
     s = robot.<span class="tok-f">get_state</span>()
     fx, fy, fz = s.wrench[<span class="tok-n">0</span>], s.wrench[<span class="tok-n">1</span>], s.wrench[<span class="tok-n">2</span>]
     <span class="tok-f">print</span>(<span class="tok-s">f"contact force Z = {fz:.1f} N"</span>)</code></pre>
+
+        <h3><span lang="en">Pure Python, and Python + live GUI</span><span lang="ja">純 Python、および Python + ライブ GUI</span><span lang="zh">純 Python,以及 Python + 即時 GUI</span></h3>
+        <p lang="en">Two runnable tutorials. <code>python_control</code> drives everything from Python (no GUI). <code>python_with_gui</code> attaches the browser monitor to <em>your</em> robot via <code>serve_in_background(robot)</code> — same process, same socket — so your script drives while the GUI shows live state.</p>
+        <p lang="ja">2 つの実行可能チュートリアル。<code>python_control</code> は全て Python から制御(GUI なし)。<code>python_with_gui</code> は <code>serve_in_background(robot)</code> で<em>あなたの</em>robot にブラウザモニタを接続(同一プロセス・同一ソケット)—— スクリプトが制御し、GUI はライブ状態を表示。</p>
+        <p lang="zh">兩支可執行教學。<code>python_control</code> 全部用 Python 控制(不開 GUI)。<code>python_with_gui</code> 用 <code>serve_in_background(robot)</code> 把瀏覽器監看接到<em>你的</em> robot(同進程、同 socket)—— 你的腳本控制、GUI 顯示即時狀態。</p>
+<pre><code><span class="tok-c"># pure Python, no GUI</span>
+python -m ur5e_control.examples.python_control
+
+<span class="tok-c"># Python drives + browser shows live state</span>
+python -m ur5e_control.examples.python_with_gui     <span class="tok-c"># open http://127.0.0.1:8080</span></code></pre>
+<pre><code><span class="tok-k">from</span> ur5e_control <span class="tok-k">import</span> UR5eRobot, RobotConfig
+<span class="tok-k">from</span> ur5e_control.gui <span class="tok-k">import</span> serve_in_background
+
+<span class="tok-k">with</span> UR5eRobot(RobotConfig()) <span class="tok-k">as</span> robot:
+    <span class="tok-f">serve_in_background</span>(robot)        <span class="tok-c"># monitor at http://127.0.0.1:8080</span>
+    robot.<span class="tok-f">move_l</span>([<span class="tok-n">0.1</span>, <span class="tok-n">0.3</span>, <span class="tok-n">0.2</span>, <span class="tok-n">0</span>, <span class="tok-n">-3.14</span>, <span class="tok-n">0</span>])  <span class="tok-c"># GUI shows it live</span></code></pre>
+        <div class="callout info">
+          <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>
+          <div class="body"><span lang="en"><b>Control-mode toggle</b> (top of the panel): <b>Python control</b> locks the GUI's move/jog/home (live monitor) so a human can't fight your script — <b>STOP always works</b>. <b>GUI control</b> re-enables the buttons for manual jogging. The lock is enforced server-side, not just hidden.</span><span lang="ja"><b>制御モード切替</b>(パネル上部): <b>Python control</b> は GUI の move/jog/home をロック(ライブモニタ)し、人がスクリプトと競合しないように —— <b>STOP は常に有効</b>。<b>GUI control</b> で手動ジョグ用にボタンを再有効化。ロックはサーバ側で強制(隠すだけではない)。</span><span lang="zh"><b>控制模式切換</b>(面板上方): <b>Python control</b> 會鎖住 GUI 的 move/jog/home(純監看),避免人手跟腳本打架 —— <b>STOP 永遠可用</b>。<b>GUI control</b> 把按鈕重新啟用以便手動 jog。鎖定是後端強制,不只是隱藏。</span></div>
+        </div>
       </section>
 
       <!-- SAFETY -->

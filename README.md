@@ -49,6 +49,36 @@ exercise the whole UI offline). Flip the in-page switch to drive the real arm;
 the prominent **STOP** button sends a controlled stop. No third-party deps (it
 uses the standard-library `http.server`).
 
+### Control from Python while the GUI shows live state
+
+Attach the monitor to *your* robot in the same process — your script drives, the
+browser displays:
+
+```python
+from ur5e_control import UR5eRobot, RobotConfig
+from ur5e_control.gui import serve_in_background
+
+with UR5eRobot(RobotConfig()) as robot:
+    serve_in_background(robot)            # http://127.0.0.1:8080 (Python control mode)
+    robot.move_l([0.1, 0.3, 0.2, 0, -3.14, 0])   # the GUI shows it live
+```
+
+A **control-mode toggle** at the top of the panel switches between **GUI
+control** (jog from the browser) and **Python control** (browser locked to a
+live monitor so a human can't fight the script; **STOP** always works). The lock
+is enforced server-side.
+
+### Runnable examples
+
+```bash
+python -m ur5e_control.examples.python_control      # pure Python, no GUI
+python -m ur5e_control.examples.python_with_gui     # Python drives + live GUI
+python -m ur5e_control.examples.move_example        # dry-run motion preview
+python -m ur5e_control.examples.force_control_example   # mock force control
+```
+All run with no robot (dry-run / mock) by default; pass `--live` where supported
+to drive real hardware.
+
 ## Layout
 
 ```

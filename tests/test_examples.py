@@ -73,3 +73,22 @@ def test_force_control_example_runs_with_mock(no_real_sockets, capsys):
     mod.main()
     out = capsys.readouterr().out
     assert out.strip(), "force control example produced no output"
+
+
+def test_python_control_imports():
+    """python_control imports cleanly and exposes a callable main()."""
+    mod = importlib.import_module("ur5e_control.examples.python_control")
+    assert hasattr(mod, "main") and callable(mod.main)
+
+
+def test_python_control_runs_in_dry_run(no_real_sockets, capsys):
+    """python_control.main(dry_run=True) completes without real sockets or errors."""
+    mod = importlib.import_module("ur5e_control.examples.python_control")
+    mod.main(dry_run=True)
+    assert capsys.readouterr().out.strip(), "dry-run python_control produced no output"
+
+
+def test_python_with_gui_imports():
+    """python_with_gui imports cleanly (it would bind a port if run, so don't)."""
+    mod = importlib.import_module("ur5e_control.examples.python_with_gui")
+    assert hasattr(mod, "main") and callable(mod.main)

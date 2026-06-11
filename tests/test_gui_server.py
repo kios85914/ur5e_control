@@ -14,7 +14,18 @@ from http.server import ThreadingHTTPServer
 
 import pytest
 
-from ur5e_control.gui.server import RobotService, make_handler
+from ur5e_control import RobotConfig, UR5eRobot
+from ur5e_control.gui.server import RobotService, make_handler, serve_in_background
+
+# a pose that lands inside the default workspace after world_to_ur (negate x,y)
+_OK_POSE = [0.0, -0.5, 0.2, 0.0, -3.14, 0.0]
+
+
+def _attached_service():
+    """A RobotService attached to an externally-owned dry-run robot."""
+    robot = UR5eRobot(RobotConfig(), dry_run=True)
+    robot.connect()
+    return RobotService(robot=robot)
 
 
 # --------------------------------------------------------------------------
@@ -76,6 +87,72 @@ def test_disconnect_clears_session():
     res = svc.disconnect()
     assert res["ok"] is True
     assert res["connected"] is False
+
+
+def test_standalone_defaults_to_gui_mode_and_can_move():
+    svc = RobotService()
+    svc.connect({"dry_run": True})
+    assert svc.status()["mode"] == "gui"
+    assert svc.status()["attached"] is False
+    assert svc.move_l({"pose": _OK_POSE})["ok"] is True
+
+
+# --------------------------------------------------------------------------
+# Attached mode + server-enforced control modes
+# --------------------------------------------------------------------------
+def test_attached_defaults_to_python_mode():
+    svc = _attached_service()
+    s = svc.status()
+    assert s["attached"] is True
+    assert s["mode"] == "python"
+    assert s["connected"] is True
+
+
+def test_python_mode_locks_gui_moves_but_always_allows_stop():
+    svc = _attached_service()
+    assert svc.move_l({"pose": _OK_POSE})["type"] == "Locked"
+    assert svc.move_j({"joints": [0, 0, 0, 0, 0, 0]})["type"] == "Locked"
+    assert svc.home()["type"] == "Locked"
+    assert svc.stop()["ok"] is True  # emergency stop is never gated
+
+
+def test_switch_to_gui_mode_unlocks_moves():
+    svc = _attached_service()
+    assert svc.set_mode({"mode": "gui"})["mode"] == "gui"
+    assert svc.move_l({"pose": _OK_POSE})["ok"] is True
+
+
+def test_attached_connect_rejected_disconnect_keeps_robot():
+    svc = _attached_service()
+    assert svc.connect({"dry_run": True})["type"] == "Attached"
+    assert svc.disconnect()["connected"] is True  # not torn down (Python owns it)
+
+
+def test_set_mode_validates():
+    svc = _attached_service()
+    assert svc.set_mode({"mode": "bogus"})["ok"] is False
+
+
+def test_standalone_python_mode_locks_moves():
+    svc = RobotService()
+    svc.connect({"dry_run": True})
+    svc.set_mode({"mode": "python"})
+    assert svc.move_l({"pose": _OK_POSE})["type"] == "Locked"
+    assert svc.stop()["ok"] is True
+
+
+def test_serve_in_background_attaches_and_serves():
+    robot = UR5eRobot(RobotConfig(), dry_run=True)
+    robot.connect()
+    httpd = serve_in_background(robot, port=0)  # ephemeral port
+    try:
+        host, port = httpd.server_address
+        with urllib.request.urlopen(f"http://{host}:{port}/api/status", timeout=3) as r:
+            s = json.loads(r.read())
+        assert s["attached"] is True
+        assert s["mode"] == "python"
+    finally:
+        httpd.shutdown()
 
 
 # --------------------------------------------------------------------------
