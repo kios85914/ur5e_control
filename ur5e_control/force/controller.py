@@ -344,6 +344,47 @@ class ForceController:
             raise ValueError(f"stiffness must be > 0 N/m, got {stiffness}")
         self._motion.impedance_hold(axes, stiffness, speed_limit, max_deviation, accel=accel)
 
+    def impedance_move(
+        self,
+        target: Sequence[float],
+        stiffness: float = 300.0,
+        speed_limit: float = 0.05,
+        max_deviation: float = 0.02,
+        accel=None,
+    ) -> None:
+        """Impedance control toward a target: spring pulls to ``target``, yields.
+
+        Unlike :meth:`hold_compliant` (spring about the *current* pose), this sets
+        the spring's equilibrium to ``target`` (``cmd=7`` -> ``cmd=8`` on the
+        daemon): the arm is pulled toward ``target`` with force ``K*(target - x)``
+        AND yields to external force on the way (block it and it gives, let go and
+        it resumes). All three translation axes comply; orientation is held at
+        entry. Non-blocking; runs until :meth:`end_force`. **PENDING HARDWARE
+        VALIDATION** — gated on the robot by ``FORCE_MODE_ENABLED``.
+
+        The per-axis position error is clamped to ``+/- max_deviation`` so the
+        spring force saturates at ``K * max_deviation`` — a far target cannot yank
+        the arm. With the defaults (K=300 N/m, max_deviation=0.02 m) that is a
+        gentle ~6 N ceiling; raise them once validated on the robot.
+
+        Args:
+            target: Equilibrium position ``[x, y, z]`` (m, UR base frame).
+            stiffness: Spring stiffness K (N/m, > 0).
+            speed_limit: Compliant-axis speed cap (m/s).
+            max_deviation: Per-axis error clamp (m); caps the spring force at
+                ``K * max_deviation``.
+            accel: Ramp accel (m/s^2); ``None`` uses the config default.
+
+        Raises:
+            ValueError: If ``target`` is not a 3-vector or ``stiffness`` <= 0.
+        """
+        t = [float(v) for v in target]
+        if len(t) != _VEC3_LEN:
+            raise ValueError(f"target must have {_VEC3_LEN} values [x,y,z], got {len(t)}")
+        if stiffness <= 0.0:
+            raise ValueError(f"stiffness must be > 0 N/m, got {stiffness}")
+        self._motion.impedance_move(t, stiffness, speed_limit, max_deviation, accel=accel)
+
     def end_force(self) -> None:
         """Exit any active force/impedance mode and hold the pose (``cmd=6``)."""
         self._motion.end_force()

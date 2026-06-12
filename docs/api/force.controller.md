@@ -94,6 +94,45 @@ The contact check happens **before** each step.
     is hit) before the target force is reached. No force-mode hold is emitted in
     that case.
 
+### The three force behaviors (recommended API)
+
+Beyond the legacy `approach_until_force`, the controller exposes the three
+behaviors used by the examples:
+
+* `guarded_move(direction, speed, force_threshold_n, max_travel, ...)` — PC-side
+  velocity move (`cmd=5` speedl) that **stops and holds** the instant the force
+  along `direction` reaches the threshold. Not gated.
+* `maintain_force(direction, target_n, speed_limit=0.05, max_travel=0.05, ...)` —
+  hand off to the controller's `force_mode` (`cmd=4`) to **keep a constant contact
+  force**. The selection vector follows `direction` (e.g. `[0,0,-1]` → only Z
+  compliant). Gated by `FORCE_MODE_ENABLED`.
+* `hold_compliant(compliant_axes=(1,1,1), stiffness=300.0, ...)` — impedance
+  spring about the **current** pose (`cmd=7`): hold here, yield to pushes. Gated.
+
+### `impedance_move(target, stiffness=300.0, speed_limit=0.05, max_deviation=0.02, accel=None) -> None`
+
+**Purpose.** Impedance control **toward a target** (`cmd=8`). Unlike
+`hold_compliant` (equilibrium = current pose), the spring's equilibrium is
+`target`: the arm is pulled toward `target` with force `K*(target - x)` *and*
+yields to external force on the way (block it → it gives; release → it resumes).
+All three translation axes comply; orientation is held at entry. Non-blocking;
+runs until `end_force()`. **Gated by `FORCE_MODE_ENABLED` — pending hardware
+validation.**
+
+* **Parameters.**
+  * `target` — equilibrium position `[x, y, z]` (m, UR base frame).
+  * `stiffness` — spring stiffness K (N/m, > 0).
+  * `speed_limit` — compliant-axis speed cap (m/s).
+  * `max_deviation` — per-axis error clamp (m); the spring force **saturates at
+    `K * max_deviation`** so a far target cannot yank the arm (default K=300,
+    max_deviation=0.02 → ~6 N ceiling).
+  * `accel` — ramp accel (m/s^2); `None` uses the config default.
+* **Exceptions.** `ValueError` if `target` is not a 3-vector or `stiffness <= 0`.
+
+> **Note.** Impedance applies only while this command is active. `move_l` /
+> `move_j` remain rigid position control — they do not yield. Exit impedance with
+> `end_force()` to return to stiff control.
+
 ### Usage example
 
 ```python

@@ -56,7 +56,8 @@ _CMD_HOME = 3
 _CMD_FORCE = 4        # maintain force (persistent force_mode)
 _CMD_SPEEDL = 5       # Cartesian velocity (guarded move)
 _CMD_END_FORCE = 6    # exit any force mode and hold
-_CMD_IMPEDANCE = 7    # compliant spring about an equilibrium pose
+_CMD_IMPEDANCE = 7    # compliant spring about the entry pose (hold here)
+_CMD_IMPEDANCE_MOVE = 8  # compliant spring whose equilibrium is a target pose
 
 # Default watchdog (s) for speedl: the robot stops on its own if no new command
 # arrives within this window (hardware dead-man for the guarded move).
@@ -64,6 +65,9 @@ _DEFAULT_SPEEDL_WATCHDOG_S = 1.0
 
 # Number of scalar values in a pose / joint payload.
 _PAYLOAD_LEN = 6
+
+# Length of a Cartesian position / direction triplet.
+_VEC3_LEN = 3
 
 # Default deceleration (m/s^2) used by :meth:`stop` when none is supplied.
 _DEFAULT_STOP_DECEL = 2.0
@@ -418,6 +422,45 @@ class MotionController:
         accel = self._config.default_accel if accel is None else accel
         self._conn.send(
             self.encode_command(_CMD_IMPEDANCE, payload, accel, 0.0, self._config.default_move_time)
+        )
+
+    def impedance_move(
+        self,
+        target: Sequence[float],
+        stiffness: float,
+        speed_limit: float,
+        max_deviation: float,
+        accel: Optional[float] = None,
+    ) -> None:
+        """Impedance spring toward a target position (cmd=8); non-blocking.
+
+        Like :meth:`impedance_hold`, but the spring's equilibrium is the **target**
+        rather than the entry pose: the controller pulls the TCP toward ``target``
+        with force ``K * (target - x)`` (clamped per axis to ``K * max_deviation``)
+        while still yielding to external force. All three translation axes comply;
+        orientation is held at entry. Runs until :meth:`end_force`. **Gated on the
+        controller by FORCE_MODE_ENABLED — pending hardware validation.**
+
+        Args:
+            target: Equilibrium position ``[x, y, z]`` (m, UR base frame).
+            stiffness: Spring stiffness K (N/m).
+            speed_limit: Compliant-axis speed cap (m/s).
+            max_deviation: Per-axis error clamp (m); the spring force saturates at
+                ``K * max_deviation`` so a far target cannot yank the arm.
+            accel: Ramp accel (m/s^2); ``None`` uses ``config.default_accel``.
+
+        Raises:
+            ValueError: If ``target`` is not a 3-vector.
+        """
+        t = list(target)
+        if len(t) != _VEC3_LEN:
+            raise ValueError(f"target must have {_VEC3_LEN} values [x,y,z], got {len(t)}")
+        payload = [t[0], t[1], t[2], float(stiffness), float(speed_limit), float(max_deviation)]
+        accel = self._config.default_accel if accel is None else accel
+        self._conn.send(
+            self.encode_command(
+                _CMD_IMPEDANCE_MOVE, payload, accel, 0.0, self._config.default_move_time
+            )
         )
 
     def end_force(self) -> None:

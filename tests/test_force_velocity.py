@@ -59,6 +59,20 @@ def test_impedance_encodes_cmd7():
     assert conn.sent[0].startswith("(7, 1.0, 1.0, 0.0, 300.0, 0.05, 0.05, ")
 
 
+def test_impedance_move_encodes_cmd8():
+    conn = FakeConn()
+    MotionController(conn, RobotConfig()).impedance_move([0.1, -0.35, 0.2], 300.0, 0.05, 0.02)
+    # a0..a2 = target x,y,z; a3 = K; a4 = speed_limit; a5 = max_deviation
+    assert conn.sent[0].startswith("(8, 0.1, -0.35, 0.2, 300.0, 0.05, 0.02, ")
+
+
+def test_impedance_move_rejects_bad_target():
+    conn = FakeConn()
+    with pytest.raises(ValueError):
+        MotionController(conn, RobotConfig()).impedance_move([0.1, 0.2], 300.0, 0.05, 0.02)
+    assert conn.sent == []
+
+
 def test_end_force_encodes_cmd6():
     conn = FakeConn()
     MotionController(conn, RobotConfig()).end_force()
@@ -109,6 +123,20 @@ def test_hold_compliant_emits_cmd7():
     fc, conn = _controller(MockForceSensor([[0, 0, 0, 0, 0, 0]]))
     fc.hold_compliant(compliant_axes=(1, 1, 0), stiffness=250.0)
     assert conn.sent[0].startswith("(7, 1.0, 1.0, 0.0, 250.0, ")
+
+
+def test_impedance_move_emits_cmd8():
+    fc, conn = _controller(MockForceSensor([[0, 0, 0, 0, 0, 0]]))
+    fc.impedance_move([0.1, -0.35, 0.2], stiffness=200.0)
+    assert conn.sent[0].startswith("(8, 0.1, -0.35, 0.2, 200.0, ")
+
+
+def test_impedance_move_rejects_bad_args():
+    fc, _ = _controller(MockForceSensor([[0, 0, 0, 0, 0, 0]]))
+    with pytest.raises(ValueError):
+        fc.impedance_move([0.1, 0.2], stiffness=200.0)        # not a 3-vector
+    with pytest.raises(ValueError):
+        fc.impedance_move([0.1, 0.2, 0.3], stiffness=0.0)     # non-positive K
 
 
 def test_end_force_emits_cmd6():

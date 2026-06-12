@@ -69,10 +69,18 @@
 #                    time = speedl watchdog (dead-man). -> speedl([a0..a5], accel,
 #                       time). PC monitors wrench, sends cmd=2 at the threshold.
 #   cmd = 6  END FORCE     : exit any active force mode (cooperative) and hold.
-#   cmd = 7  IMPEDANCE     : a0..a2 = compliant-axis flags (1/0),
+#   cmd = 7  IMPEDANCE (hold) : a0..a2 = compliant-axis flags (1/0),
 #                    a3 = stiffness K (N/m), a4 = speed limit (m/s),
-#                    a5 = max deviation (m). -> force_mode spring about the entry
+#                    a5 = max deviation (m). -> force_mode spring about the ENTRY
 #                       pose (wrench = K*(x_eq - x)). GATED by FORCE_MODE_ENABLED.
+#   cmd = 8  IMPEDANCE (to target) : a0..a2 = TARGET position x,y,z (m, UR base),
+#                    a3 = stiffness K (N/m), a4 = speed limit (m/s),
+#                    a5 = max deviation (m). -> force_mode spring whose equilibrium
+#                       is the TARGET (not the entry pose): the spring pulls the TCP
+#                       toward the target AND yields to external force. All 3
+#                       translation axes comply; orientation is held at entry. The
+#                       per-axis force is clamped to K*max_deviation so a far target
+#                       cannot yank the arm. GATED by FORCE_MODE_ENABLED.
 #
 # -----------------------------------------------------------------------------
 # STATE STREAM  (daemon -> PC)
@@ -138,6 +146,21 @@ def UR_Control():
     global ee_speed = p[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]   # TCP speed (m/s, rad/s)
     global joints   = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]    # joints    (rad)
     global force    = p[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]   # wrench    (N, Nm)
+
+    # ------------------------------------------------------------------------
+    # clamp a position error to +/- lim (used by cmd 8 to saturate the spring
+    # force at K*lim so a far target cannot yank the arm).
+    # ------------------------------------------------------------------------
+    def clamp_err(v, lim):
+        r = v
+        if (r > lim):
+            r = lim
+        end
+        if (r < -lim):
+            r = -lim
+        end
+        return r
+    end
 
     # ------------------------------------------------------------------------
     # control thread: executes ONE motion based on the latest command in data[]
@@ -243,6 +266,39 @@ def UR_Control():
                 while (not force_stop):
                     x = get_actual_tcp_pose()
                     wrench_vector = [a3 * (x_eq[0] - x[0]), a3 * (x_eq[1] - x[1]), a3 * (x_eq[2] - x[2]), 0.0, 0.0, 0.0]
+                    force_mode(x_eq, selection_vector, wrench_vector, f_type, limits)
+                    sync()
+                end
+                end_force_mode()
+                active_force = 0
+            end
+        end
+
+        # --- cmd = 8 : IMPEDANCE TO TARGET (spring whose equilibrium is a goal) -
+        # a0..a2 = TARGET position x,y,z (m, UR base), a3 = stiffness K (N/m),
+        # a4 = compliant-axis speed limit (m/s), a5 = max deviation (m).
+        # Unlike cmd 7 (equilibrium = entry pose), the equilibrium IS the target,
+        # so the spring pulls the TCP toward the target while still yielding to
+        # external force. Orientation is held at the entry value (rotation rigid);
+        # all 3 translation axes comply. Per-axis position error is clamped to
+        # +/- a5 so the spring force saturates at K*a5 (a far target can't yank the
+        # arm). PENDING HARDWARE VALIDATION -- gated by FORCE_MODE_ENABLED.
+        if (cmd == 8):
+            if (FORCE_MODE_ENABLED):
+                active_force = 8
+                force_stop   = False
+                entry            = get_actual_tcp_pose()
+                # Equilibrium pose: target position, entry orientation.
+                x_eq             = p[a0, a1, a2, entry[3], entry[4], entry[5]]
+                selection_vector = [1, 1, 1, 0, 0, 0]
+                f_type = 2
+                limits = [a4, a4, a4, 0.17, 0.17, 0.17]
+                while (not force_stop):
+                    x = get_actual_tcp_pose()
+                    ex = clamp_err(x_eq[0] - x[0], a5)
+                    ey = clamp_err(x_eq[1] - x[1], a5)
+                    ez = clamp_err(x_eq[2] - x[2], a5)
+                    wrench_vector = [a3 * ex, a3 * ey, a3 * ez, 0.0, 0.0, 0.0]
                     force_mode(x_eq, selection_vector, wrench_vector, f_type, limits)
                     sync()
                 end
