@@ -57,6 +57,9 @@ def test_defaults_match_locked_values():
     assert cfg.home_pose == [0.0, -0.35, 0.25, 0.0, -3.14, 0.0]
     # Force-mode branches disabled by default (armed via render_daemon).
     assert cfg.force_mode_enabled is False
+    # force_mode stability tuning defaults (stable-leaning; tune on robot).
+    assert cfg.force_mode_damping == 0.2
+    assert cfg.force_mode_gain_scaling == 0.5
 
 
 def test_home_pose_has_length_6():

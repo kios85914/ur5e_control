@@ -126,6 +126,15 @@ def UR_Control():
     # script_sender.render_daemon() at upload time (one source of truth).
     global FORCE_MODE_ENABLED = {{FORCE_MODE_ENABLED}}
 
+    # ---- force_mode stability tuning (injected from RobotConfig) ------------
+    # FORCE_MODE_DAMPING [0..1]: higher = compliant axes decelerate faster =
+    #   more stable but more sluggish. FORCE_MODE_GAIN_SCALING [0..2]: lower =
+    #   gentler force tracking = more stable. Both are applied (via
+    #   force_mode_set_damping / force_mode_set_gain_scaling) before every force
+    #   command (cmd 4/7/8) to tame oscillation/chatter on stiff contact.
+    global FORCE_MODE_DAMPING      = {{FORCE_MODE_DAMPING}}
+    global FORCE_MODE_GAIN_SCALING = {{FORCE_MODE_GAIN_SCALING}}
+
     # ---- cooperative-stop flags for force modes (cmd 4 & 7) -----------------
     # active_force is the cmd of the running force mode (0 = none). force_stop is
     # set by client() to ask a force loop to exit so end_force_mode() ALWAYS runs
@@ -214,6 +223,8 @@ def UR_Control():
             if (FORCE_MODE_ENABLED):
                 active_force = 4
                 force_stop   = False
+                force_mode_set_damping(FORCE_MODE_DAMPING)
+                force_mode_set_gain_scaling(FORCE_MODE_GAIN_SCALING)
                 # Task frame selects how a0..a2 (the push direction) is read:
                 #   vel == 0 -> BASE frame (p[0,0,0,0,0,0]): [0,0,-1] presses
                 #               straight down regardless of tool orientation.
@@ -277,6 +288,8 @@ def UR_Control():
             if (FORCE_MODE_ENABLED):
                 active_force = 7
                 force_stop   = False
+                force_mode_set_damping(FORCE_MODE_DAMPING)
+                force_mode_set_gain_scaling(FORCE_MODE_GAIN_SCALING)
                 x_eq             = get_actual_tcp_pose()
                 selection_vector = [a0, a1, a2, 0, 0, 0]
                 f_type = 2
@@ -321,6 +334,8 @@ def UR_Control():
             if (FORCE_MODE_ENABLED):
                 active_force = 8
                 force_stop   = False
+                force_mode_set_damping(FORCE_MODE_DAMPING)
+                force_mode_set_gain_scaling(FORCE_MODE_GAIN_SCALING)
                 entry            = get_actual_tcp_pose()
                 # Equilibrium: target position (a0..a2), entry orientation kept.
                 x_eq             = p[a0, a1, a2, entry[3], entry[4], entry[5]]

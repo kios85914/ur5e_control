@@ -93,6 +93,17 @@ class RobotConfig:
             the FT 300 is mounted and parameters are validated. Set ``True`` only
             after on-robot bring-up. (Guarded move, cmd 5, is a plain velocity
             move and is NOT gated by this.)
+        force_mode_damping: URScript ``force_mode_set_damping`` value [0..1],
+            injected into the daemon. Higher = the compliant axes decelerate
+            faster = **more stable but more sluggish**; lower = snappier but can
+            oscillate/chatter against a stiff surface. UR's default is very low
+            (~0.025); we default to ``0.2`` to damp contact oscillation. **Tune on
+            the robot.**
+        force_mode_gain_scaling: URScript ``force_mode_set_gain_scaling`` value
+            [0..2], injected into the daemon. Scales the force-loop gain; **lower =
+            more stable** (less aggressive force tracking). UR's default is 1.0; we
+            default to ``0.5`` for stability on stiff contact. **Tune on the
+            robot.**
     """
 
     controller_ip: str = "192.168.0.137"
@@ -112,6 +123,8 @@ class RobotConfig:
     max_speed: float = 0.25
     home_pose: List[float] = field(default_factory=_default_home_pose)
     force_mode_enabled: bool = False
+    force_mode_damping: float = 0.2
+    force_mode_gain_scaling: float = 0.5
 
     def world_to_ur(self, pose: List[float]) -> List[float]:
         """Convert a pose from the world frame to the UR base frame.

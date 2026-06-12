@@ -74,6 +74,9 @@ def render_daemon(
     * ``{{FORCE_MODE_ENABLED}}`` -> ``True``/``False`` from
       ``config.force_mode_enabled`` (arms the daemon's cmd 4/7 force branches;
       ``str(bool)`` renders the exact URScript boolean literal)
+    * ``{{FORCE_MODE_DAMPING}}`` / ``{{FORCE_MODE_GAIN_SCALING}}`` -> the
+      ``force_mode`` stability tuning from ``config`` (applied via
+      ``force_mode_set_damping`` / ``force_mode_set_gain_scaling``).
 
     Note ``controller_ip``/``script_port`` are *not* in the daemon — those are
     where the PC uploads *to* (see :func:`send_script`), not where the daemon
@@ -81,7 +84,8 @@ def render_daemon(
 
     Args:
         config: Configuration supplying ``pc_host``, ``state_port``, ``home_pose``,
-            ``force_mode_enabled``.
+            ``force_mode_enabled``, ``force_mode_damping``,
+            ``force_mode_gain_scaling``.
         path: Daemon template path. Defaults to the packaged daemon.
 
     Returns:
@@ -95,6 +99,8 @@ def render_daemon(
         ("{{HOME_POSE}}", f"p[{home}]"),
         # URScript booleans are `True`/`False`; str(bool) matches exactly.
         ("{{FORCE_MODE_ENABLED}}", str(bool(config.force_mode_enabled))),
+        ("{{FORCE_MODE_DAMPING}}", repr(float(config.force_mode_damping))),
+        ("{{FORCE_MODE_GAIN_SCALING}}", repr(float(config.force_mode_gain_scaling))),
     ):
         text = text.replace(token, value)
     return text.encode("utf-8")
