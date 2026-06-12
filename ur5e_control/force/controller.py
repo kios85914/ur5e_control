@@ -293,8 +293,17 @@ class ForceController:
         :meth:`end_force`. Non-blocking. **PENDING HARDWARE VALIDATION** — gated
         on the robot by ``FORCE_MODE_ENABLED`` (a no-op until you enable it).
 
+        Compliance follows the direction: only the axes with a non-zero component
+        become compliant, the rest stay position-held. So a single-axis push like
+        ``[0, 0, -1]`` makes **only Z** compliant — the arm presses Z at
+        ``target_n`` N while X/Y and all rotation hold firm. This is the canonical
+        "press straight down with constant force" setup; for it the other axes do
+        not drift. A multi-axis direction like ``[1, 0, -1]`` makes both X and Z
+        compliant (a constant force in that diagonal).
+
         Args:
-            direction: Push direction 3-vector (UR base frame); normalised.
+            direction: Push direction 3-vector (UR base frame); normalised. Its
+                non-zero axes are the ones made compliant (see above).
             target_n: Target contact force (N, > 0).
             speed_limit: Compliant-axis speed cap (m/s).
             max_travel: Compliant-axis travel cap (m).

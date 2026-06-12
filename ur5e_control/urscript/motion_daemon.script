@@ -53,7 +53,11 @@
 #   cmd = 4  MAINTAIN FORCE : a0..a2 = push dir (unit), a3 = target force X (N),
 #                    a4 = compliant-axis speed limit (m/s), a5 = max travel (m)
 #                    -> persistent force_mode (regulates constant wrench at
-#                       500 Hz). GATED by FORCE_MODE_ENABLED. Exits cooperatively.
+#                       500 Hz). The selection vector is derived from the push
+#                       direction: only axes with a non-zero component comply, the
+#                       rest stay position-held. So [0,0,-1] -> press Z only, x/y/
+#                       rotation rigid (the canonical single-axis constant force).
+#                       GATED by FORCE_MODE_ENABLED. Exits cooperatively.
 #   cmd = 5  GUARDED MOVE  : a0..a5 = Cartesian velocity (m/s, rad/s),
 #                    time = speedl watchdog (dead-man). -> speedl([a0..a5], accel,
 #                       time). PC monitors wrench, sends cmd=2 at the threshold.
@@ -174,7 +178,16 @@ def UR_Control():
                 active_force = 4
                 force_stop   = False
                 task_frame       = get_actual_tcp_pose()
-                selection_vector = [1, 1, 1, 0, 0, 0]
+                # Comply ONLY on the axes the push direction uses; the others stay
+                # rigid (position-held). So a pure-Z direction -> [0,0,1,0,0,0]:
+                # press Z at the target force while x/y/rotation hold firm.
+                sel_x = 0
+                sel_y = 0
+                sel_z = 0
+                if (a0 != 0): sel_x = 1 end
+                if (a1 != 0): sel_y = 1 end
+                if (a2 != 0): sel_z = 1 end
+                selection_vector = [sel_x, sel_y, sel_z, 0, 0, 0]
                 wrench_vector    = [a0 * a3, a1 * a3, a2 * a3, 0.0, 0.0, 0.0]
                 f_type = 2
                 limits = [a4, a4, a4, 0.17, 0.17, 0.17]
