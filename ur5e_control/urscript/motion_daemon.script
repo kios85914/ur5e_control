@@ -208,7 +208,14 @@ def UR_Control():
             if (FORCE_MODE_ENABLED):
                 active_force = 4
                 force_stop   = False
-                task_frame       = get_actual_tcp_pose()
+                # Task frame = BASE frame (NOT the TCP pose). The push direction
+                # a0..a2 is in the UR base frame (same convention as speedl /
+                # guarded_move), so the wrench must be applied in base coordinates.
+                # Using get_actual_tcp_pose() here would express the wrench in the
+                # TOOL frame -- and with the tool rotated ~pi about Y (ry~=-3.14),
+                # tool-Z points along base -Z, so a "-Z" push would invert to base
+                # +Z and drive the arm UP. p[0,0,0,0,0,0] with type=2 keeps it base.
+                task_frame       = p[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
                 # Comply ONLY on the axes the push direction uses; the others stay
                 # rigid (position-held). So a pure-Z direction -> [0,0,1,0,0,0]:
                 # press Z at the target force while x/y/rotation hold firm.
@@ -263,10 +270,15 @@ def UR_Control():
                 selection_vector = [a0, a1, a2, 0, 0, 0]
                 f_type = 2
                 limits = [a4, a4, a4, 0.17, 0.17, 0.17]
+                # Apply the wrench in the BASE frame: the error (x_eq - x) below is
+                # a base-frame displacement, so the task frame must be base too.
+                # (get_actual_tcp_pose() as the task frame would rotate the spring
+                # force by the tool orientation -- e.g. invert Z when ry~=-pi.)
+                base_frame = p[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
                 while (not force_stop):
                     x = get_actual_tcp_pose()
                     wrench_vector = [a3 * (x_eq[0] - x[0]), a3 * (x_eq[1] - x[1]), a3 * (x_eq[2] - x[2]), 0.0, 0.0, 0.0]
-                    force_mode(x_eq, selection_vector, wrench_vector, f_type, limits)
+                    force_mode(base_frame, selection_vector, wrench_vector, f_type, limits)
                     sync()
                 end
                 end_force_mode()
@@ -288,18 +300,23 @@ def UR_Control():
                 active_force = 8
                 force_stop   = False
                 entry            = get_actual_tcp_pose()
-                # Equilibrium pose: target position, entry orientation.
+                # Equilibrium: target position (a0..a2), entry orientation kept.
                 x_eq             = p[a0, a1, a2, entry[3], entry[4], entry[5]]
                 selection_vector = [1, 1, 1, 0, 0, 0]
                 f_type = 2
                 limits = [a4, a4, a4, 0.17, 0.17, 0.17]
+                # Apply the wrench in the BASE frame: target & error are base-frame
+                # positions, so the task frame must be base (NOT the tool pose, which
+                # would rotate the pull by the tool orientation -- inverting Z when
+                # ry~=-pi). a0..a2 are base-frame coordinates, same as move_l.
+                base_frame = p[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
                 while (not force_stop):
                     x = get_actual_tcp_pose()
                     ex = clamp_err(x_eq[0] - x[0], a5)
                     ey = clamp_err(x_eq[1] - x[1], a5)
                     ez = clamp_err(x_eq[2] - x[2], a5)
                     wrench_vector = [a3 * ex, a3 * ey, a3 * ez, 0.0, 0.0, 0.0]
-                    force_mode(x_eq, selection_vector, wrench_vector, f_type, limits)
+                    force_mode(base_frame, selection_vector, wrench_vector, f_type, limits)
                     sync()
                 end
                 end_force_mode()
