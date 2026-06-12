@@ -275,6 +275,10 @@ class RobotConnection:
                     except socket.timeout:
                         continue
                     except OSError as exc:
+                        # A close()/shutdown deliberately tears the socket down;
+                        # that's not a fault, so only warn for unexpected errors.
+                        if self._stop_event.is_set() or self._closed:
+                            break
                         logger.warning("recv() error (%s); daemon disconnected", exc)
                         break
                     if not chunk:
