@@ -102,12 +102,20 @@ behaviors used by the examples:
 * `guarded_move(direction, speed, force_threshold_n, max_travel, ...)` — PC-side
   velocity move (`cmd=5` speedl) that **stops and holds** the instant the force
   along `direction` reaches the threshold. Not gated.
-* `maintain_force(direction, target_n, speed_limit=0.05, max_travel=0.05, ...)` —
-  hand off to the controller's `force_mode` (`cmd=4`) to **keep a constant contact
-  force**. The selection vector follows `direction` (e.g. `[0,0,-1]` → only Z
-  compliant). Gated by `FORCE_MODE_ENABLED`.
-* `hold_compliant(compliant_axes=(1,1,1), stiffness=300.0, ...)` — impedance
-  spring about the **current** pose (`cmd=7`): hold here, yield to pushes. Gated.
+* `maintain_force(direction, target_n, speed_limit=0.05, max_travel=0.05, ..., frame="base")`
+  — hand off to the controller's `force_mode` (`cmd=4`) to **keep a constant
+  contact force**. The selection vector follows `direction` (e.g. `[0,0,-1]` →
+  only Z compliant). `frame="base"` reads `direction` in the UR base frame;
+  `frame="tool"` reads it in the TCP/tool frame (push along the tool's own axis
+  whatever way it points). Gated by `FORCE_MODE_ENABLED`.
+* `hold_compliant(compliant_axes=(1,1,1), stiffness=300.0, ..., frame="base")` —
+  impedance spring about the **current** pose (`cmd=7`): hold here, yield to
+  pushes. `frame="tool"` makes `compliant_axes` the tool axes frozen at entry.
+  Gated.
+
+> **Frame note.** `frame` rides in the command tuple's unused `vel` field
+> (0.0 = base, 1.0 = tool); the daemon picks `force_mode`'s task frame
+> accordingly. Default `"base"` matches `speedl` / `guarded_move` / `move_l`.
 
 ### `impedance_move(target, stiffness=300.0, speed_limit=0.05, max_deviation=0.02, accel=None) -> None`
 

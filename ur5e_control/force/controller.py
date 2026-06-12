@@ -285,6 +285,7 @@ class ForceController:
         speed_limit: float = 0.05,
         max_travel: float = 0.05,
         accel=None,
+        frame: str = "base",
     ) -> None:
         """Regulate a constant contact force ``target_n`` N along ``direction``.
 
@@ -301,18 +302,33 @@ class ForceController:
         not drift. A multi-axis direction like ``[1, 0, -1]`` makes both X and Z
         compliant (a constant force in that diagonal).
 
+        ``frame`` selects the frame ``direction`` is expressed in:
+
+        * ``"base"`` (default) — UR base frame, e.g. ``[0, 0, -1]`` always presses
+          straight down regardless of tool orientation.
+        * ``"tool"`` — the TCP/tool frame, e.g. ``[0, 0, 1]`` presses along the
+          tool's own +Z (its approach axis) whichever way the tool points.
+
         Args:
-            direction: Push direction 3-vector (UR base frame); normalised. Its
-                non-zero axes are the ones made compliant (see above).
+            direction: Push direction 3-vector; normalised. Its non-zero axes are
+                the ones made compliant (see above). Frame set by ``frame``.
             target_n: Target contact force (N, > 0).
             speed_limit: Compliant-axis speed cap (m/s).
             max_travel: Compliant-axis travel cap (m).
             accel: Ramp accel (m/s^2); ``None`` uses the config default.
+            frame: ``"base"`` (default) or ``"tool"``.
+
+        Raises:
+            ValueError: If ``direction`` is zero, ``target_n`` <= 0, or ``frame``
+                is not ``"base"``/``"tool"``.
         """
         unit = self._unit_direction(direction)
         if target_n <= 0.0:
             raise ValueError(f"target_n must be > 0 N, got {target_n}")
-        self._motion.force_push(unit, target_n, speed_limit, max_travel, accel=accel)
+        self._motion.force_push(
+            unit, target_n, speed_limit, max_travel, accel=accel,
+            frame_flag=self._frame_flag(frame),
+        )
 
     def hold_compliant(
         self,
@@ -321,6 +337,7 @@ class ForceController:
         speed_limit: float = 0.05,
         max_deviation: float = 0.05,
         accel=None,
+        frame: str = "base",
     ) -> None:
         """Hold a compliant spring about the current pose (impedance).
 
@@ -330,19 +347,35 @@ class ForceController:
         Non-blocking. **PENDING HARDWARE VALIDATION** — gated on the robot by
         ``FORCE_MODE_ENABLED``.
 
+        ``frame`` selects which axes ``compliant_axes`` refer to:
+
+        * ``"base"`` (default) — UR base axes, e.g. ``[0, 0, 1]`` = compliant
+          along base Z (vertical).
+        * ``"tool"`` — the tool axes frozen at the entry pose, e.g. ``[0, 0, 1]``
+          = compliant along the tool's approach axis (a compliant probe).
+
         Args:
-            compliant_axes: 3 flags ``[cx, cy, cz]`` (1 = compliant, 0 = stiff).
+            compliant_axes: 3 flags ``[cx, cy, cz]`` (1 = compliant, 0 = stiff),
+                in the frame chosen by ``frame``.
             stiffness: Spring stiffness K (N/m, > 0).
             speed_limit: Compliant-axis speed cap (m/s).
             max_deviation: Max deviation from equilibrium (m).
             accel: Ramp accel (m/s^2); ``None`` uses the config default.
+            frame: ``"base"`` (default) or ``"tool"``.
+
+        Raises:
+            ValueError: If ``compliant_axes`` is not length 3, ``stiffness`` <= 0,
+                or ``frame`` is not ``"base"``/``"tool"``.
         """
         axes = list(compliant_axes)
         if len(axes) != _VEC3_LEN:
             raise ValueError(f"compliant_axes must have {_VEC3_LEN} flags, got {len(axes)}")
         if stiffness <= 0.0:
             raise ValueError(f"stiffness must be > 0 N/m, got {stiffness}")
-        self._motion.impedance_hold(axes, stiffness, speed_limit, max_deviation, accel=accel)
+        self._motion.impedance_hold(
+            axes, stiffness, speed_limit, max_deviation, accel=accel,
+            frame_flag=self._frame_flag(frame),
+        )
 
     def impedance_move(
         self,
@@ -392,6 +425,26 @@ class ForceController:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+    @staticmethod
+    def _frame_flag(frame: str) -> float:
+        """Map a ``frame`` name to the daemon flag (0.0 base, 1.0 tool).
+
+        Args:
+            frame: ``"base"`` or ``"tool"``.
+
+        Returns:
+            ``0.0`` for ``"base"``, ``1.0`` for ``"tool"`` (carried in the command
+            tuple's ``vel`` field for force_mode commands).
+
+        Raises:
+            ValueError: If ``frame`` is neither ``"base"`` nor ``"tool"``.
+        """
+        if frame == "base":
+            return 0.0
+        if frame == "tool":
+            return 1.0
+        raise ValueError(f"frame must be 'base' or 'tool', got {frame!r}")
+
     @staticmethod
     def _unit_direction(direction: Sequence[float]) -> list[float]:
         """Normalise a 3-vector approach direction (UR base frame).

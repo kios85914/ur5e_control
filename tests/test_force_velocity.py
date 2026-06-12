@@ -125,6 +125,36 @@ def test_hold_compliant_emits_cmd7():
     assert conn.sent[0].startswith("(7, 1.0, 1.0, 0.0, 250.0, ")
 
 
+def _vel_field(tuple_str):
+    # tuple "(cmd, a0..a5, accel, vel, time)" -> the vel field (frame flag).
+    parts = [p.strip() for p in tuple_str.strip("()").split(",")]
+    return parts[8]  # 0=cmd, 1..6=a0..a5, 7=accel, 8=vel, 9=time
+
+
+def test_maintain_force_frame_flag_in_vel_field():
+    # base (default) -> vel field 0.0; tool -> vel field 1.0
+    fc, conn = _controller(MockForceSensor([[0, 0, 0, 0, 0, 0]]))
+    fc.maintain_force([0, 0, -1], target_n=8.0)
+    assert _vel_field(conn.sent[0]) == "0.0"
+    conn.sent.clear()
+    fc.maintain_force([0, 0, 1], target_n=8.0, frame="tool")
+    assert _vel_field(conn.sent[0]) == "1.0"
+
+
+def test_hold_compliant_frame_flag_in_vel_field():
+    fc, conn = _controller(MockForceSensor([[0, 0, 0, 0, 0, 0]]))
+    fc.hold_compliant(frame="tool")
+    assert _vel_field(conn.sent[0]) == "1.0"
+
+
+def test_force_frame_rejects_bad_value():
+    fc, _ = _controller(MockForceSensor([[0, 0, 0, 0, 0, 0]]))
+    with pytest.raises(ValueError):
+        fc.maintain_force([0, 0, -1], target_n=5.0, frame="world")
+    with pytest.raises(ValueError):
+        fc.hold_compliant(frame="tcp")
+
+
 def test_impedance_move_emits_cmd8():
     fc, conn = _controller(MockForceSensor([[0, 0, 0, 0, 0, 0]]))
     fc.impedance_move([0.1, -0.35, 0.2], stiffness=200.0)

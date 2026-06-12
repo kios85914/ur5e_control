@@ -58,12 +58,15 @@
 #   cmd = 3  home  : payload all 0; daemon uses the configured home pose
 #                    -> movel(<config.home_pose, injected as {{HOME_POSE}}>, accel, vel, time)
 #   cmd = 4  MAINTAIN FORCE : a0..a2 = push dir (unit), a3 = target force X (N),
-#                    a4 = compliant-axis speed limit (m/s), a5 = max travel (m)
+#                    a4 = compliant-axis speed limit (m/s), a5 = max travel (m),
+#                    vel = frame flag (0 = base, 1 = tool).
 #                    -> persistent force_mode (regulates constant wrench at
 #                       500 Hz). The selection vector is derived from the push
 #                       direction: only axes with a non-zero component comply, the
 #                       rest stay position-held. So [0,0,-1] -> press Z only, x/y/
 #                       rotation rigid (the canonical single-axis constant force).
+#                       The task frame is base (vel=0) or the live TCP/tool pose
+#                       (vel=1), so the direction is read in that frame.
 #                       GATED by FORCE_MODE_ENABLED. Exits cooperatively.
 #   cmd = 5  GUARDED MOVE  : a0..a5 = Cartesian velocity (m/s, rad/s),
 #                    time = speedl watchdog (dead-man). -> speedl([a0..a5], accel,
@@ -71,8 +74,11 @@
 #   cmd = 6  END FORCE     : exit any active force mode (cooperative) and hold.
 #   cmd = 7  IMPEDANCE (hold) : a0..a2 = compliant-axis flags (1/0),
 #                    a3 = stiffness K (N/m), a4 = speed limit (m/s),
-#                    a5 = max deviation (m). -> force_mode spring about the ENTRY
-#                       pose (wrench = K*(x_eq - x)). GATED by FORCE_MODE_ENABLED.
+#                    a5 = max deviation (m), vel = frame flag (0 = base, 1 = tool).
+#                    -> force_mode spring about the ENTRY pose (wrench =
+#                       K*(x_eq - x)). The flags refer to base axes (vel=0) or the
+#                       tool axes frozen at entry (vel=1). GATED by
+#                       FORCE_MODE_ENABLED.
 #   cmd = 8  IMPEDANCE (to target) : a0..a2 = TARGET position x,y,z (m, UR base),
 #                    a3 = stiffness K (N/m), a4 = speed limit (m/s),
 #                    a5 = max deviation (m). -> force_mode spring whose equilibrium
@@ -208,14 +214,19 @@ def UR_Control():
             if (FORCE_MODE_ENABLED):
                 active_force = 4
                 force_stop   = False
-                # Task frame = BASE frame (NOT the TCP pose). The push direction
-                # a0..a2 is in the UR base frame (same convention as speedl /
-                # guarded_move), so the wrench must be applied in base coordinates.
-                # Using get_actual_tcp_pose() here would express the wrench in the
-                # TOOL frame -- and with the tool rotated ~pi about Y (ry~=-3.14),
-                # tool-Z points along base -Z, so a "-Z" push would invert to base
-                # +Z and drive the arm UP. p[0,0,0,0,0,0] with type=2 keeps it base.
-                task_frame       = p[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+                # Task frame selects how a0..a2 (the push direction) is read:
+                #   vel == 0 -> BASE frame (p[0,0,0,0,0,0]): [0,0,-1] presses
+                #               straight down regardless of tool orientation.
+                #   vel == 1 -> TOOL frame (live TCP pose): [0,0,1] presses along
+                #               the tool's own +Z (approach axis), whichever way it
+                #               points. Default is base (matches speedl/guarded_move).
+                # (Base is critical: using the TCP pose unconditionally would invert
+                # a base "-Z" push to +Z when the tool is rotated ~pi about Y.)
+                if (vel == 1):
+                    task_frame   = get_actual_tcp_pose()
+                else:
+                    task_frame   = p[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+                end
                 # Comply ONLY on the axes the push direction uses; the others stay
                 # rigid (position-held). So a pure-Z direction -> [0,0,1,0,0,0]:
                 # press Z at the target force while x/y/rotation hold firm.
@@ -270,15 +281,26 @@ def UR_Control():
                 selection_vector = [a0, a1, a2, 0, 0, 0]
                 f_type = 2
                 limits = [a4, a4, a4, 0.17, 0.17, 0.17]
-                # Apply the wrench in the BASE frame: the error (x_eq - x) below is
-                # a base-frame displacement, so the task frame must be base too.
-                # (get_actual_tcp_pose() as the task frame would rotate the spring
-                # force by the tool orientation -- e.g. invert Z when ry~=-pi.)
-                base_frame = p[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+                # Frame for the compliant axes / wrench. The error (x_eq - x) is a
+                # BASE-frame displacement, so:
+                #   vel == 0 -> base: task frame = base, rot_inv = identity (use the
+                #               error directly).
+                #   vel == 1 -> tool: task frame = the tool pose frozen at entry;
+                #               rotate the base error into that frame (rot_inv) so
+                #               the compliant axes follow the tool, not the base.
+                if (vel == 1):
+                    task_frame = x_eq
+                    rot_inv    = pose_inv(p[0.0, 0.0, 0.0, x_eq[3], x_eq[4], x_eq[5]])
+                else:
+                    task_frame = p[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+                    rot_inv    = p[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+                end
                 while (not force_stop):
                     x = get_actual_tcp_pose()
-                    wrench_vector = [a3 * (x_eq[0] - x[0]), a3 * (x_eq[1] - x[1]), a3 * (x_eq[2] - x[2]), 0.0, 0.0, 0.0]
-                    force_mode(base_frame, selection_vector, wrench_vector, f_type, limits)
+                    err   = p[x_eq[0] - x[0], x_eq[1] - x[1], x_eq[2] - x[2], 0.0, 0.0, 0.0]
+                    err_f = pose_trans(rot_inv, err)
+                    wrench_vector = [a3 * err_f[0], a3 * err_f[1], a3 * err_f[2], 0.0, 0.0, 0.0]
+                    force_mode(task_frame, selection_vector, wrench_vector, f_type, limits)
                     sync()
                 end
                 end_force_mode()

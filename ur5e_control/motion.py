@@ -375,6 +375,7 @@ class MotionController:
         speed_limit: float,
         max_travel: float,
         accel: Optional[float] = None,
+        frame_flag: float = 0.0,
     ) -> None:
         """Maintain a constant contact force (cmd=4 persistent force_mode); non-blocking.
 
@@ -382,18 +383,28 @@ class MotionController:
         500 Hz until :meth:`end_force` (or any other command) arrives. **Gated on
         the controller by FORCE_MODE_ENABLED — pending hardware validation.**
 
+        The 6 payload slots are full, so the **frame selector rides in the unused
+        ``vel`` field** of the tuple: ``frame_flag`` 0.0 = base frame, 1.0 = tool
+        frame. The daemon uses it to pick ``force_mode``'s task frame, so
+        ``direction_unit`` is interpreted in that frame.
+
         Args:
-            direction_unit: Push direction unit 3-vector ``[dx, dy, dz]`` (UR base).
+            direction_unit: Push direction unit 3-vector ``[dx, dy, dz]`` in the
+                frame selected by ``frame_flag`` (base or tool).
             target_n: Target contact force (N) along the direction.
             speed_limit: Compliant-axis speed cap (m/s).
             max_travel: Compliant-axis travel cap (m).
             accel: Ramp accel (m/s^2); ``None`` uses ``config.default_accel``.
+            frame_flag: 0.0 = base frame (default), 1.0 = tool frame. Carried in
+                the ``vel`` field (unused for force_mode commands).
         """
         d = list(direction_unit)
         payload = [d[0], d[1], d[2], float(target_n), float(speed_limit), float(max_travel)]
         accel = self._config.default_accel if accel is None else accel
         self._conn.send(
-            self.encode_command(_CMD_FORCE, payload, accel, 0.0, self._config.default_move_time)
+            self.encode_command(
+                _CMD_FORCE, payload, accel, float(frame_flag), self._config.default_move_time
+            )
         )
 
     def impedance_hold(
@@ -403,6 +414,7 @@ class MotionController:
         speed_limit: float,
         max_deviation: float,
         accel: Optional[float] = None,
+        frame_flag: float = 0.0,
     ) -> None:
         """Hold a compliant spring about the current pose (cmd=7); non-blocking.
 
@@ -410,18 +422,28 @@ class MotionController:
         force with finite stiffness until :meth:`end_force`. **Gated on the
         controller by FORCE_MODE_ENABLED — pending hardware validation.**
 
+        Like :meth:`force_push`, the **frame selector rides in the unused ``vel``
+        field**: ``frame_flag`` 0.0 = base, 1.0 = tool. It selects the frame whose
+        axes ``compliant_axes`` refer to (base axes, or the tool axes frozen at the
+        entry pose).
+
         Args:
-            compliant_axes: 3 flags ``[cx, cy, cz]`` (1 = compliant, 0 = stiff).
+            compliant_axes: 3 flags ``[cx, cy, cz]`` (1 = compliant, 0 = stiff),
+                referring to the frame chosen by ``frame_flag``.
             stiffness: Spring stiffness K (N/m).
             speed_limit: Compliant-axis speed cap (m/s).
             max_deviation: Max deviation from equilibrium (m).
             accel: Ramp accel (m/s^2); ``None`` uses ``config.default_accel``.
+            frame_flag: 0.0 = base frame (default), 1.0 = tool frame (entry pose).
+                Carried in the ``vel`` field (unused for force_mode commands).
         """
         c = list(compliant_axes)
         payload = [c[0], c[1], c[2], float(stiffness), float(speed_limit), float(max_deviation)]
         accel = self._config.default_accel if accel is None else accel
         self._conn.send(
-            self.encode_command(_CMD_IMPEDANCE, payload, accel, 0.0, self._config.default_move_time)
+            self.encode_command(
+                _CMD_IMPEDANCE, payload, accel, float(frame_flag), self._config.default_move_time
+            )
         )
 
     def impedance_move(
