@@ -148,21 +148,21 @@ def test_move_l_delegates_to_motion_controller(patched):
     """move_l forwards pose + kwargs to MotionController.move_l unchanged."""
     robot = UR5eRobot()
     pose = [0.1, 0.2, 0.3, 0.0, -3.14, 0.0]
-    robot.move_l(pose, speed=0.05, accel=0.2, blocking=False, relative=True)
+    robot.move_l(pose, speed=0.05, accel=0.2, blocking=False, relative=True, move_time=3.0)
 
     patched.motion.move_l.assert_called_once_with(
-        pose, speed=0.05, accel=0.2, blocking=False, relative=True
+        pose, speed=0.05, accel=0.2, blocking=False, relative=True, move_time=3.0
     )
 
 
 def test_move_l_defaults_match_locked_signature(patched):
-    """move_l(pose) uses blocking=True, relative=False, speed/accel None."""
+    """move_l(pose) uses blocking=True, relative=False, speed/accel/move_time None."""
     robot = UR5eRobot()
     pose = [0.1, 0.2, 0.3, 0.0, -3.14, 0.0]
     robot.move_l(pose)
 
     patched.motion.move_l.assert_called_once_with(
-        pose, speed=None, accel=None, blocking=True, relative=False
+        pose, speed=None, accel=None, blocking=True, relative=False, move_time=None
     )
 
 
@@ -170,21 +170,21 @@ def test_move_j_delegates_to_motion_controller(patched):
     """move_j forwards joints + kwargs to MotionController.move_j unchanged."""
     robot = UR5eRobot()
     joints = [0.0, -1.57, 1.57, 0.0, 1.57, 0.0]
-    robot.move_j(joints, speed=0.1, accel=0.3, blocking=False)
+    robot.move_j(joints, speed=0.1, accel=0.3, blocking=False, move_time=2.5)
 
     patched.motion.move_j.assert_called_once_with(
-        joints, speed=0.1, accel=0.3, blocking=False
+        joints, speed=0.1, accel=0.3, blocking=False, move_time=2.5
     )
 
 
 def test_move_j_defaults_match_locked_signature(patched):
-    """move_j(joints) uses blocking=True, speed/accel None."""
+    """move_j(joints) uses blocking=True, speed/accel/move_time None."""
     robot = UR5eRobot()
     joints = [0.0, -1.57, 1.57, 0.0, 1.57, 0.0]
     robot.move_j(joints)
 
     patched.motion.move_j.assert_called_once_with(
-        joints, speed=None, accel=None, blocking=True
+        joints, speed=None, accel=None, blocking=True, move_time=None
     )
 
 
@@ -195,7 +195,9 @@ def test_home_delegates_to_motion_controller(patched):
     """home() delegates to MotionController.home (which sends cmd=3)."""
     robot = UR5eRobot()
     robot.home()
-    patched.motion.home.assert_called_once_with(speed=None, accel=None, blocking=True)
+    patched.motion.home.assert_called_once_with(
+        speed=None, accel=None, blocking=True, move_time=None
+    )
 
 
 def test_stop_delegates_to_motion_controller(patched):

@@ -154,6 +154,7 @@ class UR5eRobot:
         accel: Optional[float] = None,
         blocking: bool = True,
         relative: bool = False,
+        move_time: Optional[float] = None,
     ) -> None:
         """Move the TCP linearly to a Cartesian pose (delegates to MotionController).
 
@@ -165,9 +166,14 @@ class UR5eRobot:
                 ``config.default_accel``.
             blocking: If ``True``, block until the move converges on the target.
             relative: If ``True``, ``pose`` is a delta on the current world pose.
+            move_time: Move duration in seconds (URScript ``t``). ``None`` uses
+                ``config.default_move_time``. **If > 0 it overrides ``speed``/
+                ``accel``** (the move takes exactly this long); ``0.0`` lets speed
+                govern.
         """
         self._motion.move_l(
-            pose, speed=speed, accel=accel, blocking=blocking, relative=relative
+            pose, speed=speed, accel=accel, blocking=blocking,
+            relative=relative, move_time=move_time,
         )
 
     def move_j(
@@ -176,6 +182,7 @@ class UR5eRobot:
         speed: Optional[float] = None,
         accel: Optional[float] = None,
         blocking: bool = True,
+        move_time: Optional[float] = None,
     ) -> None:
         """Move to a joint configuration (delegates to MotionController).
 
@@ -185,8 +192,13 @@ class UR5eRobot:
             accel: Joint acceleration in rad/s^2. ``None`` uses
                 ``config.default_accel``.
             blocking: If ``True``, block until the joint move settles.
+            move_time: Move duration in seconds (URScript ``t``). ``None`` uses
+                ``config.default_move_time``. **If > 0 it overrides ``speed``/
+                ``accel``**; ``0.0`` lets speed govern.
         """
-        self._motion.move_j(joints, speed=speed, accel=accel, blocking=blocking)
+        self._motion.move_j(
+            joints, speed=speed, accel=accel, blocking=blocking, move_time=move_time
+        )
 
     def stop(self) -> None:
         """Command an immediate controlled stop (cmd=2, via MotionController)."""
@@ -197,6 +209,7 @@ class UR5eRobot:
         speed: Optional[float] = None,
         accel: Optional[float] = None,
         blocking: bool = True,
+        move_time: Optional[float] = None,
     ) -> None:
         """Move to the configured home pose (cmd=3, via MotionController).
 
@@ -206,8 +219,11 @@ class UR5eRobot:
             speed: Speed in m/s. ``None`` uses ``config.default_speed``.
             accel: Acceleration in m/s^2. ``None`` uses ``config.default_accel``.
             blocking: If ``True``, block until converged on the home pose.
+            move_time: Move duration in seconds (URScript ``t``). ``None`` uses
+                ``config.default_move_time``. **If > 0 it overrides ``speed``/
+                ``accel``**; ``0.0`` lets speed govern.
         """
-        self._motion.home(speed=speed, accel=accel, blocking=blocking)
+        self._motion.home(speed=speed, accel=accel, blocking=blocking, move_time=move_time)
 
     # ------------------------------------------------------------------
     # State

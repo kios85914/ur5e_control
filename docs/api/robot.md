@@ -51,9 +51,9 @@ connects back to the PC.
 Closes the state connection and releases its sockets. **Idempotent** — safe to
 call more than once or before `connect`.
 
-### `move_l(pose, speed=None, accel=None, blocking=True, relative=False) -> None`
+### `move_l(pose, speed=None, accel=None, blocking=True, relative=False, move_time=None) -> None`
 
-Signature: `move_l(self, pose: Sequence[float], speed: Optional[float] = None, accel: Optional[float] = None, blocking: bool = True, relative: bool = False) -> None`
+Signature: `move_l(self, pose: Sequence[float], speed: Optional[float] = None, accel: Optional[float] = None, blocking: bool = True, relative: bool = False, move_time: Optional[float] = None) -> None`
 
 Move the TCP linearly to a Cartesian pose (delegates to `MotionController`).
 
@@ -64,12 +64,15 @@ Move the TCP linearly to a Cartesian pose (delegates to `MotionController`).
   * `accel` — Cartesian acceleration (m/s^2); `None` uses `config.default_accel`.
   * `blocking` — if `True`, block until the move converges on the target.
   * `relative` — if `True`, `pose` is a delta on the current world pose.
+  * `move_time` — move duration in seconds (URScript `t`); `None` uses
+    `config.default_move_time`. **If > 0 it overrides `speed`/`accel`** — the move
+    takes exactly `move_time` seconds; `0.0` lets speed govern. Must be >= 0.
 * **Exceptions.** `WorkspaceViolation`, `SpeedViolation`, `ValueError`
-  (relative with no state), `TimeoutError` (see `MotionController.move_l`).
+  (relative with no state, or negative `move_time`), `TimeoutError`.
 
-### `move_j(joints, speed=None, accel=None, blocking=True) -> None`
+### `move_j(joints, speed=None, accel=None, blocking=True, move_time=None) -> None`
 
-Signature: `move_j(self, joints: Sequence[float], speed: Optional[float] = None, accel: Optional[float] = None, blocking: bool = True) -> None`
+Signature: `move_j(self, joints: Sequence[float], speed: Optional[float] = None, accel: Optional[float] = None, blocking: bool = True, move_time: Optional[float] = None) -> None`
 
 Move to a joint configuration (delegates to `MotionController`).
 
@@ -78,17 +81,22 @@ Move to a joint configuration (delegates to `MotionController`).
   * `speed` — joint speed (rad/s); `None` uses `config.default_speed`.
   * `accel` — joint acceleration (rad/s^2); `None` uses `config.default_accel`.
   * `blocking` — if `True`, block until the joint move settles.
-* **Exceptions.** `JointLimitViolation`, `SpeedViolation`, `TimeoutError`.
+  * `move_time` — move duration in seconds (URScript `t`); `None` uses
+    `config.default_move_time`. **If > 0 it overrides `speed`/`accel`**; `0.0`
+    lets speed govern. Must be >= 0.
+* **Exceptions.** `JointLimitViolation`, `SpeedViolation`, `ValueError`
+  (negative `move_time`), `TimeoutError`.
 
 ### `stop(self) -> None`
 
 Command an immediate controlled stop (cmd=2, via `MotionController`, using the
 controller's default deceleration).
 
-### `home(self) -> None`
+### `home(self, speed=None, accel=None, blocking=True, move_time=None) -> None`
 
 Move to the configured home pose (cmd=3, via `MotionController`). The daemon homes
-to `config.home_pose` (UR base frame, m/rad).
+to `config.home_pose` (UR base frame, m/rad). `move_time` works as in `move_l`
+(URScript `t`; > 0 overrides `speed`/`accel`).
 
 ### `get_state(self) -> RobotState`
 

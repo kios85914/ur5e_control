@@ -67,9 +67,9 @@ Signature: `encode_command(cmd: int, payload: Sequence[float], accel: float, vel
   Python's shortest round-trip representation (e.g. `0.1`, `0.0`, `-3.14`).
 * **Exceptions.** `ValueError` if `payload` is not exactly six values.
 
-### `move_l(pose, speed=None, accel=None, blocking=True, relative=False) -> None`
+### `move_l(pose, speed=None, accel=None, blocking=True, relative=False, move_time=None) -> None`
 
-Signature: `move_l(self, pose: Sequence[float], speed: Optional[float] = None, accel: Optional[float] = None, blocking: bool = True, relative: bool = False) -> None`
+Signature: `move_l(self, pose: Sequence[float], speed: Optional[float] = None, accel: Optional[float] = None, blocking: bool = True, relative: bool = False, move_time: Optional[float] = None) -> None`
 
 **Purpose.** Move the TCP linearly to a Cartesian pose (cmd=0 moveL).
 
@@ -83,17 +83,22 @@ Signature: `move_l(self, pose: Sequence[float], speed: Optional[float] = None, a
     the (UR-frame) target.
   * `relative` — if `True`, `pose` is a world-frame delta added to the current
     TCP pose (read from the latest daemon state, converted to world frame).
+  * `move_time` — move duration in seconds (URScript `t`); `None` uses
+    `config.default_move_time`. **If > 0 it OVERRIDES `speed`/`accel`** — the move
+    takes exactly `move_time` seconds (URScript `movel` semantics). Use `0.0` (the
+    default) to let `speed`/`accel` govern. Must be >= 0.
 * **Behavior.** Validates/clamps speed first, then converts world -> UR
   (`world_to_ur`), workspace-checks the UR-frame pose, encodes, and sends.
 * **Exceptions.**
   * `WorkspaceViolation` — malformed or out-of-workspace target (nothing sent).
   * `SpeedViolation` — `speed` not strictly positive (nothing sent).
-  * `ValueError` — `relative=True` but no current state is available yet.
+  * `ValueError` — `relative=True` but no current state is available yet, or
+    `move_time` is negative.
   * `TimeoutError` — blocking move does not converge within the poll ceiling.
 
-### `move_j(joints, speed=None, accel=None, blocking=True) -> None`
+### `move_j(joints, speed=None, accel=None, blocking=True, move_time=None) -> None`
 
-Signature: `move_j(self, joints: Sequence[float], speed: Optional[float] = None, accel: Optional[float] = None, blocking: bool = True) -> None`
+Signature: `move_j(self, joints: Sequence[float], speed: Optional[float] = None, accel: Optional[float] = None, blocking: bool = True, move_time: Optional[float] = None) -> None`
 
 **Purpose.** Move to a joint configuration (cmd=1 moveJ).
 
@@ -104,9 +109,13 @@ Signature: `move_j(self, joints: Sequence[float], speed: Optional[float] = None,
   * `accel` — joint acceleration (rad/s^2); `None` uses `config.default_accel`.
   * `blocking` — if `True`, poll until the TCP pose has settled (the joint move
     effectively stopped) within `config.convergence_tol`.
+  * `move_time` — move duration in seconds (URScript `t`); `None` uses
+    `config.default_move_time`. **If > 0 it OVERRIDES `speed`/`accel`** (URScript
+    `movej` semantics); `0.0` lets `speed`/`accel` govern. Must be >= 0.
 * **Exceptions.**
   * `JointLimitViolation` — malformed or out-of-range joints (nothing sent).
   * `SpeedViolation` — `speed` not strictly positive (nothing sent).
+  * `ValueError` — `move_time` is negative.
   * `TimeoutError` — blocking move does not settle within the poll ceiling.
 
 ### `stop(deceleration: float = 2.0) -> None`
@@ -116,9 +125,9 @@ Signature: `move_j(self, joints: Sequence[float], speed: Optional[float] = None,
 * **Parameters.** `deceleration` — stop deceleration (m/s^2; > 0 to be useful),
   placed in `a0`; `a1..a5` and accel/vel/time are zero.
 
-### `home(speed=None, accel=None, blocking=True) -> None`
+### `home(speed=None, accel=None, blocking=True, move_time=None) -> None`
 
-Signature: `home(self, speed: Optional[float] = None, accel: Optional[float] = None, blocking: bool = True) -> None`
+Signature: `home(self, speed: Optional[float] = None, accel: Optional[float] = None, blocking: bool = True, move_time: Optional[float] = None) -> None`
 
 **Purpose.** Move to the configured home pose (cmd=3). Sends an all-zero payload;
 the daemon substitutes its configured home pose (`config.home_pose`, UR base
@@ -129,8 +138,12 @@ frame).
   * `accel` — m/s^2; `None` uses `config.default_accel`.
   * `blocking` — if `True`, poll until within `config.convergence_tol` of
     `config.home_pose`.
+  * `move_time` — move duration in seconds (URScript `t`); `None` uses
+    `config.default_move_time`. **If > 0 it overrides `speed`/`accel`**; `0.0`
+    lets speed govern. Must be >= 0.
 * **Exceptions.** `SpeedViolation` if `speed` not strictly positive (nothing
-  sent); `TimeoutError` if a blocking home does not converge.
+  sent); `ValueError` if `move_time` is negative; `TimeoutError` if a blocking
+  home does not converge.
 
 ### Usage example
 

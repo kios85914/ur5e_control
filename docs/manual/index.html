@@ -226,6 +226,8 @@ footer{border-top:1px solid var(--border);padding:26px 24px;text-align:center;co
     <span class="tok-f">print</span>(<span class="tok-s">"robot connected"</span>)
 
     robot.<span class="tok-f">move_l</span>([<span class="tok-n">0.0</span>, <span class="tok-n">-0.35</span>, <span class="tok-n">0.25</span>, <span class="tok-n">0.0</span>, <span class="tok-n">-3.14</span>, <span class="tok-n">0.0</span>])  <span class="tok-c"># world frame, m / rad</span>
+    robot.<span class="tok-f">move_l</span>([<span class="tok-n">0.0</span>, <span class="tok-n">-0.35</span>, <span class="tok-n">0.25</span>, <span class="tok-n">0.0</span>, <span class="tok-n">-3.14</span>, <span class="tok-n">0.0</span>], speed=<span class="tok-n">0.05</span>)        <span class="tok-c"># pick the speed (m/s)</span>
+    robot.<span class="tok-f">move_l</span>([<span class="tok-n">0.0</span>, <span class="tok-n">-0.35</span>, <span class="tok-n">0.25</span>, <span class="tok-n">0.0</span>, <span class="tok-n">-3.14</span>, <span class="tok-n">0.0</span>], move_time=<span class="tok-n">3.0</span>)     <span class="tok-c"># or fix the duration: 3 s (overrides speed)</span>
 
     state = robot.<span class="tok-f">get_state</span>()                       <span class="tok-c"># RobotState (UR base frame)</span>
     <span class="tok-f">print</span>(state.tcp_pose, state.wrench)

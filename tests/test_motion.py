@@ -204,6 +204,40 @@ def test_move_l_clamps_speed_to_max():
     assert conn.sent == [expected]
 
 
+def test_move_l_move_time_overrides_default_in_tuple():
+    """An explicit move_time is encoded as the URScript t (overrides the default)."""
+    conn = FakeConnection()
+    cfg = RobotConfig()
+    mc = MotionController(conn, cfg)
+
+    world_pose = [-0.1, -0.4, 0.2, 0.0, -3.14, 0.0]
+    mc.move_l(world_pose, speed=0.1, accel=0.1, blocking=False, move_time=3.0)
+
+    expected = mc.encode_command(0, cfg.world_to_ur(world_pose), 0.1, 0.1, 3.0)
+    assert conn.sent == [expected]
+
+
+def test_move_l_move_time_none_uses_config_default():
+    """move_time=None falls back to config.default_move_time (0.0)."""
+    conn = FakeConnection()
+    cfg = RobotConfig()
+    mc = MotionController(conn, cfg)
+
+    world_pose = [-0.1, -0.4, 0.2, 0.0, -3.14, 0.0]
+    mc.move_l(world_pose, speed=0.1, accel=0.1, blocking=False, move_time=None)
+
+    assert f", {cfg.default_move_time})" in conn.sent[0]
+
+
+def test_move_l_rejects_negative_move_time():
+    """A negative move_time raises ValueError and sends nothing."""
+    conn = FakeConnection()
+    mc = MotionController(conn, RobotConfig())
+    with pytest.raises(ValueError):
+        mc.move_l([-0.1, -0.4, 0.2, 0.0, -3.14, 0.0], blocking=False, move_time=-1.0)
+    assert conn.sent == []
+
+
 # ---------------------------------------------------------------------------
 # move_j — joint encoding + safety
 # ---------------------------------------------------------------------------
@@ -217,6 +251,19 @@ def test_move_j_sends_movej_encoded():
     mc.move_j(joints, speed=0.2, accel=0.2, blocking=False)
 
     expected = mc.encode_command(1, joints, 0.2, 0.2, cfg.default_move_time)
+    assert conn.sent == [expected]
+
+
+def test_move_j_move_time_overrides_default_in_tuple():
+    """An explicit move_time is encoded as the URScript t for moveJ too."""
+    conn = FakeConnection()
+    cfg = RobotConfig()
+    mc = MotionController(conn, cfg)
+
+    joints = [0.0, -1.57, 1.57, 0.0, 1.57, 0.0]
+    mc.move_j(joints, speed=0.2, accel=0.2, blocking=False, move_time=4.0)
+
+    expected = mc.encode_command(1, joints, 0.2, 0.2, 4.0)
     assert conn.sent == [expected]
 
 

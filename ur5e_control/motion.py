@@ -164,6 +164,7 @@ class MotionController:
         accel: Optional[float] = None,
         blocking: bool = True,
         relative: bool = False,
+        move_time: Optional[float] = None,
     ) -> None:
         """Move the TCP linearly to a Cartesian pose (cmd=0 moveL).
 
@@ -184,12 +185,18 @@ class MotionController:
             blocking: If ``True``, poll state until the TCP pose is within
                 ``config.convergence_tol`` of the (UR-frame) target.
             relative: If ``True``, ``pose`` is a delta on the current world pose.
+            move_time: Move duration in seconds (URScript ``t``). ``None`` uses
+                ``config.default_move_time``. **If > 0 it OVERRIDES ``speed`` and
+                ``accel``** — the move takes exactly ``move_time`` seconds (this is
+                URScript ``movel`` behavior). Use ``0.0`` (the default) to let
+                ``speed``/``accel`` govern. Must be >= 0.
 
         Raises:
             WorkspaceViolation: If the target pose is malformed or outside the
                 configured workspace (nothing is sent).
             SpeedViolation: If ``speed`` is not strictly positive (nothing is
                 sent).
+            ValueError: If ``move_time`` is negative.
         """
         target_world = list(pose)
         if relative:
@@ -198,6 +205,7 @@ class MotionController:
 
         speed = self._config.default_speed if speed is None else speed
         accel = self._config.default_accel if accel is None else accel
+        t = self._resolve_move_time(move_time)
 
         # Clamp/validate speed first (fail fast on a non-positive speed).
         vel = clamp_speed(speed, self._config)
@@ -206,9 +214,7 @@ class MotionController:
         ur_pose = self._config.world_to_ur(target_world)
         check_pose_in_workspace(ur_pose, self._config)
 
-        msg = self.encode_command(
-            _CMD_MOVEL, ur_pose, accel, vel, self._config.default_move_time
-        )
+        msg = self.encode_command(_CMD_MOVEL, ur_pose, accel, vel, t)
         self._conn.send(msg)
 
         if blocking:
@@ -223,6 +229,7 @@ class MotionController:
         speed: Optional[float] = None,
         accel: Optional[float] = None,
         blocking: bool = True,
+        move_time: Optional[float] = None,
     ) -> None:
         """Move to a joint configuration (cmd=1 moveJ).
 
@@ -238,23 +245,28 @@ class MotionController:
                 ``config.default_accel``.
             blocking: If ``True``, poll state until every joint is within
                 ``config.convergence_tol`` of the commanded target.
+            move_time: Move duration in seconds (URScript ``t``). ``None`` uses
+                ``config.default_move_time``. **If > 0 it OVERRIDES ``speed`` and
+                ``accel``** — the move takes exactly ``move_time`` seconds
+                (URScript ``movej`` behavior). ``0.0`` lets ``speed``/``accel``
+                govern. Must be >= 0.
 
         Raises:
             JointLimitViolation: If ``joints`` is malformed or any joint is out of
                 range (nothing is sent).
             SpeedViolation: If ``speed`` is not strictly positive (nothing is
                 sent).
+            ValueError: If ``move_time`` is negative.
         """
         joints = list(joints)
         speed = self._config.default_speed if speed is None else speed
         accel = self._config.default_accel if accel is None else accel
+        t = self._resolve_move_time(move_time)
 
         vel = clamp_speed(speed, self._config)
         check_joints(joints, self._config)
 
-        msg = self.encode_command(
-            _CMD_MOVEJ, joints, accel, vel, self._config.default_move_time
-        )
+        msg = self.encode_command(_CMD_MOVEJ, joints, accel, vel, t)
         self._conn.send(msg)
 
         if blocking:
@@ -285,6 +297,7 @@ class MotionController:
         speed: Optional[float] = None,
         accel: Optional[float] = None,
         blocking: bool = True,
+        move_time: Optional[float] = None,
     ) -> None:
         """Move to the configured home pose (cmd=3).
 
@@ -298,19 +311,23 @@ class MotionController:
                 to ``config.max_speed``; must be > 0.
             accel: Acceleration in m/s^2. ``None`` uses ``config.default_accel``.
             blocking: If ``True``, poll until converged on ``config.home_pose``.
+            move_time: Move duration in seconds (URScript ``t``). ``None`` uses
+                ``config.default_move_time``. **If > 0 it OVERRIDES ``speed`` and
+                ``accel``** (URScript ``movel`` behavior). ``0.0`` lets
+                ``speed``/``accel`` govern. Must be >= 0.
 
         Raises:
             SpeedViolation: If ``speed`` is not strictly positive (nothing is
                 sent).
+            ValueError: If ``move_time`` is negative.
         """
         speed = self._config.default_speed if speed is None else speed
         accel = self._config.default_accel if accel is None else accel
+        t = self._resolve_move_time(move_time)
         vel = clamp_speed(speed, self._config)
 
         payload = [0.0] * _PAYLOAD_LEN
-        msg = self.encode_command(
-            _CMD_HOME, payload, accel, vel, self._config.default_move_time
-        )
+        msg = self.encode_command(_CMD_HOME, payload, accel, vel, t)
         self._conn.send(msg)
 
         if blocking:
@@ -410,6 +427,30 @@ class MotionController:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+    def _resolve_move_time(self, move_time: Optional[float]) -> float:
+        """Resolve the URScript ``t`` for a move (default-or-explicit, validated).
+
+        Returns ``config.default_move_time`` when ``move_time`` is ``None``,
+        otherwise the explicit value. A non-zero result OVERRIDES speed/accel on
+        the controller (URScript ``movel``/``movej`` semantics), so callers pass
+        ``0.0`` to keep speed authoritative or a positive duration to pin the move
+        length.
+
+        Args:
+            move_time: Requested duration in seconds, or ``None`` for the config
+                default.
+
+        Returns:
+            The duration in seconds to encode as ``t``.
+
+        Raises:
+            ValueError: If ``move_time`` is negative.
+        """
+        t = self._config.default_move_time if move_time is None else float(move_time)
+        if t < 0.0:
+            raise ValueError(f"move_time must be >= 0 s, got {t}")
+        return t
+
     def _current_world_pose(self) -> List[float]:
         """Return the current TCP pose in the **world frame** (meters/radians).
 
