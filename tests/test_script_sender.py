@@ -33,6 +33,16 @@ def test_render_daemon_fills_placeholders_from_config():
     assert repr(float(cfg.home_pose[0])) in out
 
 
+def test_render_daemon_force_mode_flag_injected():
+    """force_mode_enabled renders as the URScript boolean in the daemon."""
+    off = render_daemon(RobotConfig(force_mode_enabled=False)).decode("ascii")
+    assert "global FORCE_MODE_ENABLED = False" in off
+
+    on = render_daemon(RobotConfig(force_mode_enabled=True)).decode("ascii")
+    assert "global FORCE_MODE_ENABLED = True" in on
+    assert "{{FORCE_MODE_ENABLED}}" not in on
+
+
 def test_render_daemon_default_config_is_valid_urscript_shape():
     out = render_daemon().decode("ascii")
     # the templated daemon must still be raw URScript (no Python wrapper)

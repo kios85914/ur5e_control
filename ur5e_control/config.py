@@ -69,7 +69,14 @@ class RobotConfig:
         state_port: TCP port on this PC that receives the daemon state stream.
         default_speed: Default Cartesian/joint speed (m/s or rad/s).
         default_accel: Default Cartesian/joint acceleration (m/s^2 or rad/s^2).
-        default_move_time: Default blend/move duration in seconds.
+        default_move_time: Default move duration in seconds for moveL/moveJ.
+            **Leave this at 0.0 to make ``speed`` actually take effect.** In
+            URScript, ``movel``/``movej`` accept ``(pose, a, v, t)``; when ``t``
+            (time) is non-zero it OVERRIDES ``v`` (speed) and ``a`` (accel) and
+            the move always takes exactly ``t`` seconds. So a non-zero
+            ``default_move_time`` makes every move ignore the ``speed`` argument
+            (the classic "changing speed does nothing" symptom). With ``0.0`` the
+            controller honours ``v``/``a`` and ``speed`` works as expected.
         convergence_tol: Tolerance (meters/radians) for deciding a blocking move
             has reached its target.
         workspace_limits: Cartesian clamps in the UR base frame, mapping each of
@@ -78,6 +85,14 @@ class RobotConfig:
         max_speed: Hard upper bound on commanded speed (m/s or rad/s).
         home_pose: Home pose ``[x, y, z, rx, ry, rz]`` (meters, radians) in the
             UR base frame.
+        force_mode_enabled: Whether the daemon's ``force_mode`` branches (cmd 4
+            maintain-force and cmd 7 impedance) are armed. Injected into the
+            uploaded daemon by :func:`script_sender.render_daemon` as
+            ``FORCE_MODE_ENABLED``. **Kept ``False`` by default** so a stray force
+            command cannot make the arm compliant / drive it into a surface before
+            the FT 300 is mounted and parameters are validated. Set ``True`` only
+            after on-robot bring-up. (Guarded move, cmd 5, is a plain velocity
+            move and is NOT gated by this.)
     """
 
     controller_ip: str = "192.168.0.137"
@@ -86,7 +101,7 @@ class RobotConfig:
     state_port: int = 30002
     default_speed: float = 0.1
     default_accel: float = 0.1
-    default_move_time: float = 2.0
+    default_move_time: float = 0.0   # 0 => speed/accel govern (see attr docstring)
     convergence_tol: float = 1e-3
     workspace_limits: Dict[str, Tuple[float, float]] = field(
         default_factory=_default_workspace_limits
@@ -96,6 +111,7 @@ class RobotConfig:
     )
     max_speed: float = 0.25
     home_pose: List[float] = field(default_factory=_default_home_pose)
+    force_mode_enabled: bool = False
 
     def world_to_ur(self, pose: List[float]) -> List[float]:
         """Convert a pose from the world frame to the UR base frame.

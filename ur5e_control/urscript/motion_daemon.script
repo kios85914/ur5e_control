@@ -46,6 +46,13 @@
 #                       hardcoded Z or rotation)
 #   cmd = 1  moveJ : a0..a5 = joints j0..j5 (rad)
 #                    -> movej([a0..a5], accel, vel, time)
+#
+#   IMPORTANT (moveL/moveJ): URScript's `time` arg OVERRIDES `vel`/`accel` when
+#   it is > 0 -- the move then takes exactly `time` seconds and the commanded
+#   speed is IGNORED. The PC sends time = RobotConfig.default_move_time, which
+#   defaults to 0.0 so `vel`/`accel` (the `speed` argument) actually govern the
+#   move. A non-zero default_move_time is the classic "changing speed does
+#   nothing" bug.
 #   cmd = 2  stop  : a0 = deceleration (m/s^2); a1..a5 = 0
 #                    -> stopl(a0)
 #   cmd = 3  home  : payload all 0; daemon uses the configured home pose
@@ -101,8 +108,9 @@ def UR_Control():
     # wired and validated. Kept False so an accidental force command cannot make
     # the arm compliant / drive it into a surface before parameters are checked.
     # Guarded move (cmd=5, plain velocity) is NOT gated by this -- it is just a
-    # speed move like moveL.
-    global FORCE_MODE_ENABLED = False
+    # speed move like moveL. Injected from RobotConfig.force_mode_enabled by
+    # script_sender.render_daemon() at upload time (one source of truth).
+    global FORCE_MODE_ENABLED = {{FORCE_MODE_ENABLED}}
 
     # ---- cooperative-stop flags for force modes (cmd 4 & 7) -----------------
     # active_force is the cmd of the running force mode (0 = none). force_stop is

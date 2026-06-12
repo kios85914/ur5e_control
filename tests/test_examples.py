@@ -92,3 +92,16 @@ def test_python_with_gui_imports():
     """python_with_gui imports cleanly (it would bind a port if run, so don't)."""
     mod = importlib.import_module("ur5e_control.examples.python_with_gui")
     assert hasattr(mod, "main") and callable(mod.main)
+
+
+def test_force_realrobot_imports():
+    """force_realrobot imports cleanly and exposes a callable main()."""
+    mod = importlib.import_module("ur5e_control.examples.force_realrobot")
+    assert hasattr(mod, "main") and callable(mod.main)
+
+
+def test_force_realrobot_runs_in_dry_run(no_real_sockets, capsys):
+    """force_realrobot.main(dry_run=True) previews safely: no sockets, no errors."""
+    mod = importlib.import_module("ur5e_control.examples.force_realrobot")
+    mod.main(dry_run=True)
+    assert capsys.readouterr().out.strip(), "dry-run force_realrobot produced no output"

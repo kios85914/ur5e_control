@@ -50,10 +50,13 @@ def test_defaults_match_locked_values():
     assert cfg.state_port == 30002
     assert cfg.default_speed == 0.1
     assert cfg.default_accel == 0.1
-    assert cfg.default_move_time == 2.0
+    # 0.0 so the URScript `time` arg does not override `speed` (see config docs).
+    assert cfg.default_move_time == 0.0
     assert cfg.convergence_tol == 1e-3
     assert cfg.max_speed == 0.25
     assert cfg.home_pose == [0.0, -0.35, 0.25, 0.0, -3.14, 0.0]
+    # Force-mode branches disabled by default (armed via render_daemon).
+    assert cfg.force_mode_enabled is False
 
 
 def test_home_pose_has_length_6():

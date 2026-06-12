@@ -71,13 +71,17 @@ def render_daemon(
     * ``{{PC_HOST}}``    -> ``config.pc_host``    (where the daemon connects back)
     * ``{{STATE_PORT}}`` -> ``config.state_port``
     * ``{{HOME_POSE}}``  -> ``p[x, y, z, rx, ry, rz]`` from ``config.home_pose``
+    * ``{{FORCE_MODE_ENABLED}}`` -> ``True``/``False`` from
+      ``config.force_mode_enabled`` (arms the daemon's cmd 4/7 force branches;
+      ``str(bool)`` renders the exact URScript boolean literal)
 
     Note ``controller_ip``/``script_port`` are *not* in the daemon — those are
     where the PC uploads *to* (see :func:`send_script`), not where the daemon
     connects back.
 
     Args:
-        config: Configuration supplying ``pc_host``, ``state_port``, ``home_pose``.
+        config: Configuration supplying ``pc_host``, ``state_port``, ``home_pose``,
+            ``force_mode_enabled``.
         path: Daemon template path. Defaults to the packaged daemon.
 
     Returns:
@@ -89,6 +93,8 @@ def render_daemon(
         ("{{PC_HOST}}", str(config.pc_host)),
         ("{{STATE_PORT}}", str(int(config.state_port))),
         ("{{HOME_POSE}}", f"p[{home}]"),
+        # URScript booleans are `True`/`False`; str(bool) matches exactly.
+        ("{{FORCE_MODE_ENABLED}}", str(bool(config.force_mode_enabled))),
     ):
         text = text.replace(token, value)
     return text.encode("utf-8")

@@ -34,12 +34,13 @@ field has a default, so `RobotConfig()` is fully usable out of the box.
 | `state_port` | `int` | `30002` | TCP port on this PC that receives the daemon state stream. |
 | `default_speed` | `float` | `0.1` | Default Cartesian/joint speed (m/s or rad/s). |
 | `default_accel` | `float` | `0.1` | Default Cartesian/joint acceleration (m/s^2 or rad/s^2). |
-| `default_move_time` | `float` | `2.0` | Default blend/move duration (s). |
+| `default_move_time` | `float` | `0.0` | moveL/moveJ duration (s). **Keep at `0.0`** — a non-zero `time` arg overrides URScript `speed`/`accel`, so the move ignores `speed` and always takes `time` seconds (the "changing speed does nothing" bug). |
 | `convergence_tol` | `float` | `1e-3` | Tolerance (m/rad) for deciding a blocking move reached its target. |
 | `workspace_limits` | `Dict[str, Tuple[float, float]]` | `{"x": (-0.40, 0.40), "y": (-0.565, -0.265), "z": (-0.10, 0.40)}` | Cartesian clamps in the UR base frame, per axis (m). |
 | `joint_limits` | `Tuple[Tuple[float, float], ...]` | six `(-6.283185, 6.283185)` pairs | Per-joint `(min, max)` limits (rad). |
 | `max_speed` | `float` | `0.25` | Hard upper bound on commanded speed (m/s or rad/s). |
 | `home_pose` | `List[float]` | `[0.0, -0.35, 0.25, 0.0, -3.14, 0.0]` | Home pose `[x, y, z, rx, ry, rz]` (m, rad) in UR base frame. |
+| `force_mode_enabled` | `bool` | `False` | Arms the daemon's `force_mode` branches (cmd 4 maintain-force, cmd 7 impedance), injected as `FORCE_MODE_ENABLED` by `render_daemon`. Keep `False` until the FT 300 is mounted and validated. |
 
 The mutable defaults (`workspace_limits`, `joint_limits`, `home_pose`) are
 created by `default_factory`, so each instance owns an independent copy.

@@ -225,7 +225,9 @@ class UR5eRobot:
         ``guarded_move`` (move until force, then stop & hold) is ready to use.
         ``maintain_force`` / ``hold_compliant`` use the controller's force_mode and
         are **gated on the robot by FORCE_MODE_ENABLED — pending hardware
-        validation**.
+        validation**. Arm them by constructing this robot with
+        ``RobotConfig(force_mode_enabled=True)`` (the flag is injected into the
+        uploaded daemon); leave it ``False`` until the FT 300 is validated.
         """
         if self._force is None:
             from .force.controller import ForceController
