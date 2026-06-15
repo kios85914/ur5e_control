@@ -86,6 +86,7 @@ class UR5eRobot:
         self._connection = connection if self._injected else RobotConnection(config, dry_run=dry_run)
         self._motion = MotionController(self._connection, config)
         self._force = None  # lazily built ForceController (see the `force` property)
+        self._ft300 = None  # RobotiqFT300Stream when config.ft300_enabled (port 63351)
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -107,6 +108,17 @@ class UR5eRobot:
             send_script(render_daemon(self.config), self.config, dry_run=self.dry_run)
         self._connection.start()
 
+        # Optionally start the real Robotiq FT 300/FT 300-S reader (URCap TCP
+        # port 63351). This is the actual external sensor -- distinct from the
+        # daemon's get_tcp_force() in the state stream.
+        if self.config.ft300_enabled and not self.dry_run:
+            from .force.sensor import RobotiqFT300Stream
+
+            self._ft300 = RobotiqFT300Stream(
+                self.config.controller_ip, self.config.ft300_port
+            )
+            self._ft300.start()
+
     def disconnect(self) -> None:
         """Close the state connection and release its sockets.
 
@@ -114,6 +126,9 @@ class UR5eRobot:
         (delegates to :meth:`RobotConnection.close`, which is itself idempotent).
         """
         self._connection.close()
+        if self._ft300 is not None:
+            self._ft300.close()
+            self._ft300 = None
 
     def serve_gui(self, host: str = "127.0.0.1", port: int = 8080):
         """Open the browser monitor/control panel attached to this robot.
@@ -244,14 +259,34 @@ class UR5eRobot:
         validation**. Arm them by constructing this robot with
         ``RobotConfig(force_mode_enabled=True)`` (the flag is injected into the
         uploaded daemon); leave it ``False`` until the FT 300 is validated.
+
+        Force source: with ``RobotConfig(ft300_enabled=True)`` the sensor is the
+        **real FT 300/FT 300-S** read from the URCap stream (:attr:`ft300`);
+        otherwise it is :class:`RobotiqFT300`, which reads ``state.wrench`` (the
+        UR's own ``get_tcp_force()``, NOT the external sensor).
         """
         if self._force is None:
             from .force.controller import ForceController
             from .force.sensor import RobotiqFT300
 
-            sensor = RobotiqFT300(state_provider=self.get_state)
+            if self.config.ft300_enabled and self._ft300 is not None:
+                sensor = self._ft300
+            else:
+                sensor = RobotiqFT300(state_provider=self.get_state)
             self._force = ForceController(self._motion, sensor, self.config)
         return self._force
+
+    @property
+    def ft300(self):
+        """The real Robotiq FT 300/FT 300-S reader (URCap port 63351), or ``None``.
+
+        Available after :meth:`connect` when ``config.ft300_enabled`` is set (and
+        not in dry-run). Call ``robot.ft300.read()`` for the current wrench
+        ``[fx, fy, fz, tx, ty, tz]`` (raises until the first sample arrives; use
+        ``robot.ft300.wait_for_data()`` to block for it). ``None`` when FT 300 is
+        not enabled, so callers should check before use.
+        """
+        return self._ft300
 
     def is_daemon_connected(self) -> bool:
         """Return ``True`` if the URScript daemon has connected back to the PC.

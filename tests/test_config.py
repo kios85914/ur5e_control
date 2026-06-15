@@ -60,6 +60,9 @@ def test_defaults_match_locked_values():
     # force_mode stability tuning defaults (stable-leaning; tune on robot).
     assert cfg.force_mode_damping == 0.2
     assert cfg.force_mode_gain_scaling == 0.5
+    # Real FT 300/FT 300-S reader (URCap port 63351) off by default.
+    assert cfg.ft300_enabled is False
+    assert cfg.ft300_port == 63351
 
 
 def test_home_pose_has_length_6():

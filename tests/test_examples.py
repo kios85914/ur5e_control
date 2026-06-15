@@ -100,6 +100,12 @@ def test_force_realrobot_imports():
     assert hasattr(mod, "main") and callable(mod.main)
 
 
+def test_ft300_read_imports():
+    """ft300_read imports cleanly and exposes a callable main() (needs hardware to run)."""
+    mod = importlib.import_module("ur5e_control.examples.ft300_read")
+    assert hasattr(mod, "main") and callable(mod.main)
+
+
 def test_force_realrobot_runs_in_dry_run(no_real_sockets, capsys):
     """force_realrobot.main(dry_run=True) previews safely: no sockets, no errors."""
     mod = importlib.import_module("ur5e_control.examples.force_realrobot")

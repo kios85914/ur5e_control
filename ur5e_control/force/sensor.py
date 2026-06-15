@@ -31,12 +31,18 @@ Every wrench is a 6-element list ``[fx, fy, fz, tx, ty, tz]`` with forces in
 
 from __future__ import annotations
 
+import logging
+import re
+import socket
+import threading
 from abc import ABC, abstractmethod
-from typing import Callable
+from typing import Callable, Optional
 
 from ur5e_control.state import RobotState
 
-__all__ = ["ForceSensor", "MockForceSensor", "RobotiqFT300"]
+__all__ = ["ForceSensor", "MockForceSensor", "RobotiqFT300", "RobotiqFT300Stream"]
+
+logger = logging.getLogger(__name__)
 
 # A wrench is always six scalars: [fx, fy, fz, tx, ty, tz].
 _WRENCH_LEN = 6
@@ -167,3 +173,238 @@ class RobotiqFT300(ForceSensor):
         """
         # No-op for the streamed-force backend; see docstring.
         return None
+
+
+# Matches a single signed decimal/scientific float (used to pull the six wrench
+# values out of a Robotiq 63351 record regardless of its exact punctuation).
+_FLOAT_RE = re.compile(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?")
+
+# Size of each TCP read from the Robotiq stream.
+_RECV_BUFSIZE = 4096
+
+
+def _parse_record(record: str) -> Optional[list[float]]:
+    """Parse one Robotiq stream record into a wrench, or ``None`` if it isn't one.
+
+    A record is the text of a single sample (e.g. ``"( 1.2 , 3.4 , 5.6 , 0.1 ,
+    0.2 , 0.3 )"`` or a bare CSV line). We simply extract every float in the
+    text and accept it **only if there are exactly six** — so a partial line, a
+    line with a leading counter/timestamp, or any other shape is rejected rather
+    than silently mis-parsed.
+
+    Args:
+        record: The text of one candidate record (without the delimiter).
+
+    Returns:
+        ``[fx, fy, fz, tx, ty, tz]`` if the record holds exactly six floats,
+        else ``None``.
+    """
+    nums = _FLOAT_RE.findall(record)
+    if len(nums) != _WRENCH_LEN:
+        return None
+    return [float(n) for n in nums]
+
+
+def _extract_latest(buffer: str) -> tuple[Optional[list[float]], str]:
+    """Pull the most recent complete wrench record from ``buffer``.
+
+    Splits on the record delimiter — ``)`` for the parenthesised Robotiq format
+    ``( ... )``, else newline for a bare CSV stream — and returns the last
+    complete record that parses to six floats, plus the trailing partial
+    remainder to carry into the next read.
+
+    Args:
+        buffer: Accumulated, not-yet-consumed text from the stream.
+
+    Returns:
+        ``(wrench_or_None, remainder)``.
+    """
+    if ")" in buffer:
+        delim = ")"
+    elif "\n" in buffer:
+        delim = "\n"
+    else:
+        return None, buffer
+    *records, remainder = buffer.split(delim)
+    for record in reversed(records):
+        wrench = _parse_record(record)
+        if wrench is not None:
+            return wrench, remainder
+    return None, remainder
+
+
+class RobotiqFT300Stream(ForceSensor):
+    """Robotiq FT 300 / FT 300-S read directly from the URCap's TCP port 63351.
+
+    The Robotiq Force Torque Sensor URCap runs on the UR controller, reads the
+    sensor over RS-485, and re-publishes the live wrench as an ASCII stream on
+    **TCP port 63351** of the controller. This backend connects to that port from
+    the PC (over the existing network link to the controller — no extra cable),
+    runs a background thread that keeps the latest sample, and exposes it through
+    the standard :class:`ForceSensor` interface.
+
+    Unlike :class:`RobotiqFT300` (which reads ``state.wrench`` — i.e. the UR's own
+    ``get_tcp_force()``, NOT the FT 300-S), this reads the **actual FT 300-S**.
+    Use it when the sensor is wired and the URCap reports it connected.
+
+    The reader is resilient: a short socket timeout lets it honour :meth:`close`
+    promptly, and a dropped connection is retried automatically.
+
+    Units & frame: the stream's six values are forwarded verbatim as
+    ``[fx, fy, fz, tx, ty, tz]`` (N, Nm). Note Robotiq reports them in the
+    **sensor frame** (already bias-corrected by the URCap's zeroing), which is not
+    necessarily the UR base frame — handle any mounting rotation downstream.
+
+    Args:
+        host: The UR controller's IP/hostname (the port-63351 server runs there).
+        port: The Robotiq stream port. Defaults to ``63351``.
+        connect_timeout: Seconds to wait when (re)establishing the TCP connection.
+        reconnect_delay: Seconds to wait before retrying after a drop/failure.
+    """
+
+    def __init__(
+        self,
+        host: str,
+        port: int = 63351,
+        connect_timeout: float = 5.0,
+        reconnect_delay: float = 0.5,
+    ) -> None:
+        self._host = host
+        self._port = int(port)
+        self._connect_timeout = connect_timeout
+        self._reconnect_delay = reconnect_delay
+
+        self._latest: Optional[list[float]] = None
+        self._lock = threading.Lock()
+        self._stop_event = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+        self._closed = False
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+    def start(self) -> None:
+        """Begin reading the stream on a background daemon thread (idempotent)."""
+        if self._thread is not None and self._thread.is_alive():
+            return
+        self._stop_event.clear()
+        self._closed = False
+        self._thread = threading.Thread(
+            target=self._recv_loop, name="RobotiqFT300Stream-recv", daemon=True
+        )
+        self._thread.start()
+        logger.info("RobotiqFT300Stream reading %s:%d", self._host, self._port)
+
+    def close(self) -> None:
+        """Stop the background reader and release the socket (idempotent)."""
+        if self._closed:
+            return
+        self._closed = True
+        self._stop_event.set()
+        thread = self._thread
+        if thread is not None and thread is not threading.current_thread():
+            thread.join(timeout=2.0)
+        logger.info("RobotiqFT300Stream closed")
+
+    def __enter__(self) -> "RobotiqFT300Stream":
+        self.start()
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self.close()
+
+    # ------------------------------------------------------------------
+    # ForceSensor interface
+    # ------------------------------------------------------------------
+    def has_data(self) -> bool:
+        """Return ``True`` once at least one sample has been received."""
+        with self._lock:
+            return self._latest is not None
+
+    def wait_for_data(self, timeout: float = 5.0, poll: float = 0.05) -> bool:
+        """Block until the first sample arrives, or ``timeout``. Returns success."""
+        import time
+
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if self.has_data():
+                return True
+            time.sleep(poll)
+        return self.has_data()
+
+    def read(self) -> list[float]:
+        """Return the most recent FT 300-S wrench.
+
+        Returns:
+            A fresh ``[fx, fy, fz, tx, ty, tz]`` (N, Nm) copy of the latest sample.
+
+        Raises:
+            ValueError: If no sample has been received yet (call :meth:`start`
+                first and/or :meth:`wait_for_data`).
+        """
+        with self._lock:
+            latest = self._latest
+        if latest is None:
+            raise ValueError(
+                f"no FT 300-S sample received yet from {self._host}:{self._port}"
+            )
+        return list(latest)
+
+    def zero(self) -> None:
+        """Re-tare the FT 300-S.
+
+        Zeroing is performed by the Robotiq URCap on the controller (it shifts the
+        bias the 63351 stream is reported against), so there is nothing to do from
+        the PC here — run the zero in PolyScope / via ``rq_zero_sensor()``. No-op.
+        """
+        return None
+
+    # ------------------------------------------------------------------
+    # Background reader
+    # ------------------------------------------------------------------
+    def _recv_loop(self) -> None:
+        """Connect, read, and publish the latest wrench until stopped."""
+        import time
+
+        while not self._stop_event.is_set():
+            try:
+                sock = socket.create_connection(
+                    (self._host, self._port), timeout=self._connect_timeout
+                )
+            except OSError as exc:
+                if self._stop_event.is_set():
+                    break
+                logger.warning("FT300 connect to %s:%d failed (%s); retrying",
+                               self._host, self._port, exc)
+                time.sleep(self._reconnect_delay)
+                continue
+
+            buffer = ""
+            try:
+                sock.settimeout(0.2)
+                while not self._stop_event.is_set():
+                    try:
+                        chunk = sock.recv(_RECV_BUFSIZE)
+                    except socket.timeout:
+                        continue
+                    except OSError:
+                        break
+                    if not chunk:
+                        break
+                    buffer += chunk.decode("ascii", errors="replace")
+                    wrench, buffer = _extract_latest(buffer)
+                    if wrench is not None:
+                        with self._lock:
+                            self._latest = wrench
+                    # Keep the carried-over remainder bounded if no record parses.
+                    if len(buffer) > _RECV_BUFSIZE:
+                        buffer = buffer[-_RECV_BUFSIZE:]
+            finally:
+                try:
+                    sock.close()
+                except OSError:
+                    pass
+            if not self._stop_event.is_set():
+                time.sleep(self._reconnect_delay)
+
+        logger.debug("FT300 receive loop exiting")

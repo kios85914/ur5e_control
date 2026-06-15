@@ -104,6 +104,14 @@ class RobotConfig:
             more stable** (less aggressive force tracking). UR's default is 1.0; we
             default to ``0.5`` for stability on stiff contact. **Tune on the
             robot.**
+        ft300_enabled: When ``True``, the robot reads the **real Robotiq FT 300 /
+            FT 300-S** from the URCap's TCP stream (see ``ft300_port``) instead of
+            the UR's own ``get_tcp_force()``. Requires the FT sensor wired and the
+            Robotiq URCap reporting it connected. ``get_tcp_force()`` is NOT the
+            external sensor (on CB-series it is a joint-torque estimate), so this
+            flag is how you get the actual sensor on the PC.
+        ft300_port: TCP port on the controller where the Robotiq URCap publishes
+            the live FT 300/FT 300-S wrench. Robotiq's default is ``63351``.
     """
 
     controller_ip: str = "192.168.0.137"
@@ -125,6 +133,8 @@ class RobotConfig:
     force_mode_enabled: bool = False
     force_mode_damping: float = 0.2
     force_mode_gain_scaling: float = 0.5
+    ft300_enabled: bool = False
+    ft300_port: int = 63351
 
     def world_to_ur(self, pose: List[float]) -> List[float]:
         """Convert a pose from the world frame to the UR base frame.
