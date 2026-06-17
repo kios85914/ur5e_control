@@ -38,7 +38,7 @@ _DEFAULT_PORT = 63351
 
 
 def main(host: str | None = None, port: int = _DEFAULT_PORT,
-         raw_reads: int = 8, duration: float = 20.0) -> None:
+         raw_reads: int = 8, duration: float = 20.0, do_zero: bool = False) -> None:
     """Probe + stream the Robotiq FT sensor on ``host:port``.
 
     Args:
@@ -46,6 +46,9 @@ def main(host: str | None = None, port: int = _DEFAULT_PORT,
         port: Robotiq stream port (default 63351).
         raw_reads: How many raw recv() chunks to dump in phase 1.
         duration: Seconds to print parsed wrench in phase 2.
+        do_zero: If ``True`` (``--zero``), software-tare at the start (ensure NO
+            load) so readings begin near 0 — then a ~400 g object should read
+            ~3.9 N. Re-zeroing each time you return to this pose defeats drift.
     """
     host = host or RobotConfig().controller_ip
     print(f"== Robotiq FT 300-S reader — {host}:{port} ==\n")
@@ -83,6 +86,10 @@ def main(host: str | None = None, port: int = _DEFAULT_PORT,
             print("   [FAIL] connected but no parseable 6-value record arrived.")
             print("   Paste the RAW output above so the parser can be matched.")
             return
+        if do_zero:
+            print("   software-taring now (make sure there is NO load)...")
+            sensor.zero()
+            print("   tared; readings below are relative to this baseline.")
         t_end = time.monotonic() + duration
         while time.monotonic() < t_end:
             w = sensor.read()
@@ -100,4 +107,4 @@ if __name__ == "__main__":
     host = None
     if "--host" in args:
         host = args[args.index("--host") + 1]
-    main(host=host)
+    main(host=host, do_zero="--zero" in args)

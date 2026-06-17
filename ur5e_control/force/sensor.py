@@ -35,6 +35,7 @@ import logging
 import re
 import socket
 import threading
+import time
 from abc import ABC, abstractmethod
 from typing import Callable, Optional
 
@@ -182,6 +183,12 @@ _FLOAT_RE = re.compile(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?")
 # Size of each TCP read from the Robotiq stream.
 _RECV_BUFSIZE = 4096
 
+# Robotiq FT URCap "accessor" command port on the controller. rq_zero_sensor()
+# internally opens 127.0.0.1:63350 and sends "SET ZRO"; we can do the same over
+# the network to trigger the URCap's own (source-side) zero.
+_FT_COMMAND_PORT = 63350
+_FT_ZERO_COMMAND = b"SET ZRO"
+
 
 def _parse_record(record: str) -> Optional[list[float]]:
     """Parse one Robotiq stream record into a wrench, or ``None`` if it isn't one.
@@ -275,6 +282,9 @@ class RobotiqFT300Stream(ForceSensor):
         self._reconnect_delay = reconnect_delay
 
         self._latest: Optional[list[float]] = None
+        # Software-tare offset subtracted from every read() (Robotiq's "zero" is
+        # itself a host-side offset; see zero()). Zeros until zero() is called.
+        self._offset: list[float] = [0.0] * _WRENCH_LEN
         self._lock = threading.Lock()
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -323,8 +333,6 @@ class RobotiqFT300Stream(ForceSensor):
 
     def wait_for_data(self, timeout: float = 5.0, poll: float = 0.05) -> bool:
         """Block until the first sample arrives, or ``timeout``. Returns success."""
-        import time
-
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             if self.has_data():
@@ -333,15 +341,30 @@ class RobotiqFT300Stream(ForceSensor):
         return self.has_data()
 
     def read(self) -> list[float]:
-        """Return the most recent FT 300-S wrench.
+        """Return the most recent FT 300-S wrench, with the software tare applied.
+
+        The current :meth:`zero` offset is subtracted, so after a no-load
+        :meth:`zero` this reads ~0 at rest. Use :meth:`read_raw` for the
+        un-tared value.
 
         Returns:
-            A fresh ``[fx, fy, fz, tx, ty, tz]`` (N, Nm) copy of the latest sample.
+            A fresh ``[fx, fy, fz, tx, ty, tz]`` (N, Nm) copy (raw minus offset).
 
         Raises:
             ValueError: If no sample has been received yet (call :meth:`start`
                 first and/or :meth:`wait_for_data`).
         """
+        with self._lock:
+            latest = self._latest
+            offset = self._offset
+        if latest is None:
+            raise ValueError(
+                f"no FT 300-S sample received yet from {self._host}:{self._port}"
+            )
+        return [latest[i] - offset[i] for i in range(_WRENCH_LEN)]
+
+    def read_raw(self) -> list[float]:
+        """Return the latest wrench WITHOUT the software tare (raw stream value)."""
         with self._lock:
             latest = self._latest
         if latest is None:
@@ -350,22 +373,108 @@ class RobotiqFT300Stream(ForceSensor):
             )
         return list(latest)
 
-    def zero(self) -> None:
-        """Re-tare the FT 300-S.
+    def zero(self, samples: int = 16, settle: float = 0.005, timeout: float = 3.0) -> list[float]:
+        """Software-tare the sensor: make the current load read as zero.
 
-        Zeroing is performed by the Robotiq URCap on the controller (it shifts the
-        bias the 63351 stream is reported against), so there is nothing to do from
-        the PC here — run the zero in PolyScope / via ``rq_zero_sensor()``. No-op.
+        This is a **host-side offset** — exactly how Robotiq's own "Zero sensor"
+        works ("takes the actual values read at that moment and shifts them to 0").
+        It averages a few raw samples from the stream and stores them as the offset
+        that :meth:`read` subtracts thereafter. Call it with **no external load**
+        and **in the orientation you will measure in** (the gravity/tool offset is
+        pose-dependent); re-call it whenever you return to that pose to defeat
+        sensor drift (the typical fix for "returns to ~1 N instead of 0").
+
+        This does NOT touch the sensor or the URCap; for the URCap's own
+        source-side zero (so the raw 63351 stream itself resets) use
+        :meth:`zero_via_urcap`.
+
+        Args:
+            samples: Number of raw samples to average into the offset.
+            settle: Seconds to wait between samples (let fresh frames arrive).
+            timeout: Max seconds to wait for streaming data before giving up.
+
+        Returns:
+            The captured offset ``[fx, fy, fz, tx, ty, tz]``.
+
+        Raises:
+            ValueError: If no streaming data is available to tare against.
         """
-        return None
+        if not self.wait_for_data(timeout=timeout):
+            raise ValueError("cannot zero: no FT 300-S data is streaming")
+        acc = [0.0] * _WRENCH_LEN
+        n = 0
+        deadline = time.monotonic() + timeout
+        while n < samples and time.monotonic() < deadline:
+            with self._lock:
+                latest = self._latest
+            if latest is not None:
+                for i in range(_WRENCH_LEN):
+                    acc[i] += latest[i]
+                n += 1
+            time.sleep(settle)
+        if n == 0:
+            raise ValueError("cannot zero: no samples captured")
+        offset = [a / n for a in acc]
+        with self._lock:
+            self._offset = offset
+        logger.info("RobotiqFT300Stream software-tared: offset=%s", offset)
+        return list(offset)
+
+    def clear_zero(self) -> None:
+        """Drop the software tare (so :meth:`read` again returns the raw stream)."""
+        with self._lock:
+            self._offset = [0.0] * _WRENCH_LEN
+
+    def zero_via_urcap(self, command_port: int = _FT_COMMAND_PORT,
+                       timeout: float = 2.0, clear_offset: bool = True) -> bool:
+        """Trigger the Robotiq URCap's OWN zero (source-side) over the network.
+
+        Opens a socket to ``host:command_port`` (the FT URCap accessor daemon,
+        default 63350) and sends ``"SET ZRO"`` — exactly what ``rq_zero_sensor()``
+        does internally. After this the **raw 63351 stream itself** is re-tared, so
+        by default the local software offset (:meth:`zero`) is cleared to avoid
+        double-taring.
+
+        Requires the Robotiq FT URCap installed and active on the controller (the
+        daemon that also serves port 63351). Note: some users report the
+        programmatic zero stabilizes slightly worse than the pendant button; if so,
+        prefer :meth:`zero` (host-side) and re-tare each cycle.
+
+        Args:
+            command_port: URCap accessor port (default 63350).
+            timeout: Socket connect/send timeout (s).
+            clear_offset: Also clear the local software tare (default True).
+
+        Returns:
+            ``True`` if the command was sent, ``False`` if the socket failed.
+        """
+        try:
+            sock = socket.create_connection((self._host, command_port), timeout=timeout)
+        except OSError as exc:
+            logger.warning("FT300 zero_via_urcap connect to %s:%d failed (%s)",
+                           self._host, command_port, exc)
+            return False
+        try:
+            sock.sendall(_FT_ZERO_COMMAND)
+            time.sleep(0.1)
+        except OSError as exc:
+            logger.warning("FT300 zero_via_urcap send failed (%s)", exc)
+            return False
+        finally:
+            try:
+                sock.close()
+            except OSError:
+                pass
+        if clear_offset:
+            self.clear_zero()
+        logger.info("RobotiqFT300Stream sent SET ZRO to %s:%d", self._host, command_port)
+        return True
 
     # ------------------------------------------------------------------
     # Background reader
     # ------------------------------------------------------------------
     def _recv_loop(self) -> None:
         """Connect, read, and publish the latest wrench until stopped."""
-        import time
-
         while not self._stop_event.is_set():
             try:
                 sock = socket.create_connection(

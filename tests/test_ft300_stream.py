@@ -123,6 +123,83 @@ def test_stream_read_before_data_raises():
         sensor.close()
 
 
-def test_stream_zero_is_noop():
-    sensor = RobotiqFT300Stream("127.0.0.1", 1)
-    assert sensor.zero() is None
+def test_software_tare_zeroes_current_load():
+    server = _FakeFTServer(b"( 1.0 , 2.0 , 3.0 , 0.1 , 0.2 , 0.3 )\n")
+    server.start()
+    sensor = RobotiqFT300Stream("127.0.0.1", server.port)
+    sensor.start()
+    try:
+        assert sensor.wait_for_data(timeout=2.0)
+        offset = sensor.zero(samples=5)
+        assert offset == [1.0, 2.0, 3.0, 0.1, 0.2, 0.3]
+        # read() now subtracts the offset -> ~0; read_raw() is unchanged.
+        assert sensor.read() == [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        assert sensor.read_raw() == [1.0, 2.0, 3.0, 0.1, 0.2, 0.3]
+        # clearing the tare restores the raw value on read().
+        sensor.clear_zero()
+        assert sensor.read() == [1.0, 2.0, 3.0, 0.1, 0.2, 0.3]
+    finally:
+        sensor.close()
+        server.close()
+
+
+def test_zero_without_data_raises():
+    sensor = RobotiqFT300Stream("127.0.0.1", 1)  # never connects
+    sensor.start()
+    try:
+        with pytest.raises(ValueError):
+            sensor.zero(timeout=0.3)
+    finally:
+        sensor.close()
+
+
+class _CmdServer:
+    """A one-shot TCP server that records the bytes a client sends it."""
+
+    def __init__(self):
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._sock.bind(("127.0.0.1", 0))
+        self._sock.listen(1)
+        self.port = self._sock.getsockname()[1]
+        self.received = b""
+        self._thread = threading.Thread(target=self._serve, daemon=True)
+
+    def start(self):
+        self._thread.start()
+
+    def _serve(self):
+        self._sock.settimeout(2.0)
+        try:
+            conn, _ = self._sock.accept()
+        except OSError:
+            return
+        with conn:
+            conn.settimeout(1.0)
+            try:
+                self.received = conn.recv(64)
+            except OSError:
+                pass
+
+    def close(self):
+        self._thread.join(timeout=1.0)
+        try:
+            self._sock.close()
+        except OSError:
+            pass
+
+
+def test_zero_via_urcap_sends_set_zro():
+    server = _CmdServer()
+    server.start()
+    sensor = RobotiqFT300Stream("127.0.0.1", 63351)  # data port unused here
+    ok = sensor.zero_via_urcap(command_port=server.port, timeout=2.0)
+    server.close()
+    assert ok is True
+    assert server.received == b"SET ZRO"
+
+
+def test_zero_via_urcap_returns_false_on_no_server():
+    sensor = RobotiqFT300Stream("127.0.0.1", 63351)
+    # port 1 will refuse the connection -> graceful False, no raise.
+    assert sensor.zero_via_urcap(command_port=1, timeout=1.0) is False
