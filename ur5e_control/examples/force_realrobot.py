@@ -12,6 +12,9 @@ order from least to most aggressive:
    then ``end_force()``. Single-axis: only ``Z`` is compliant, ``x/y``/rotation
    stay rigid (``direction=[0,0,-1]``).
 
+In LIVE mode it attaches the browser monitor (``robot.serve_gui()`` ->
+http://127.0.0.1:8080) and pauses for confirmation before each motion phase.
+
 .. danger::
 
    **This drives the real arm into a surface.** Run it only after:
@@ -22,14 +25,14 @@ order from least to most aggressive:
    * the workspace limits in :class:`RobotConfig` match your cell.
 
    It arms ``force_mode`` by uploading the daemon with
-   ``RobotConfig(force_mode_enabled=True)``. The force targets here are LOW
-   (5 N) on purpose; raise them only once the low-force run behaves.
+   ``RobotConfig(force_mode_enabled=True)``. Keep the force targets modest until
+   the run behaves.
 
 Run it::
 
     python -m ur5e_control.examples.force_realrobot            # DRY-RUN preview
     python -m ur5e_control.examples.force_realrobot --live     # REAL robot (asks to confirm)
-    python -m ur5e_control.examples.force_realrobot --live --yes   # skip the prompt
+    python -m ur5e_control.examples.force_realrobot --live --yes   # skip the prompts
 
 Frames & units: poses ``[x, y, z, rx, ry, rz]`` in meters/radians; ``move_l``
 inputs are world frame; wrench is ``[fx, fy, fz, tx, ty, tz]`` (N, Nm) in the UR
@@ -57,12 +60,12 @@ _START_POSE = [0.0, -0.35, 0.20, 0.0, -3.14, 0.0]
 # Phase-2 guarded move: descend along -Z until this contact force, then stop.
 _GUARD_DIR = [0.0, 0.0, -1.0]
 _GUARD_SPEED = 0.02          # m/s — slow approach
-_GUARD_FORCE_N = 5.0         # N — stop at this contact force
+_GUARD_FORCE_N = 10.0        # N — stop at this contact force
 _GUARD_MAX_TRAVEL = 0.12     # m — give up (and stop) past this
 
 # Phase-3 maintain force: press straight down with a constant force.
 _PRESS_DIR = [0.0, 0.0, -1.0]   # single-axis: only Z compliant
-_PRESS_FORCE_N = 5.0            # N — LOW on purpose for first bring-up
+_PRESS_FORCE_N = 10.0           # N — keep modest for bring-up
 _PRESS_SPEED_LIMIT = 0.03       # m/s — compliant-axis speed cap
 _PRESS_MAX_TRAVEL = 0.05        # m — compliant-axis travel cap
 _PRESS_HOLD_S = 4.0             # s — how long to hold the force
@@ -158,20 +161,30 @@ def main(dry_run: bool = True, skip_prompt: bool = False) -> None:
                   f"firewall on state port {config.state_port}. Aborting.\n")
             return
 
+        # Attach the browser monitor for the live run (gated: dry-run stays
+        # socket-free so the preview/tests open nothing).
+        if live:
+            robot.serve_gui()
+            print("GUI monitor: http://127.0.0.1:8080\n")
+
         # --- Phase 1: baseline wrench -------------------------------------
         print("1) baseline wrench at rest (sanity-check the FT 300)")
         _show_wrench(robot, "rest")
 
-        # --- move to a safe start pose, then ZERO the FT 300-S (no load) --
+        # --- Phase 2: move to a safe start pose, then ZERO (no load) -------
         print(f"\n2) move to safe start pose {_START_POSE}, then ZERO the FT 300-S")
         if live:
-            robot.move_l(_START_POSE, speed=0.05, blocking=blocking)
+            robot.move_l(_START_POSE, speed=0.2, blocking=blocking)
             _zero_ft300(robot)   # tare here: no contact, at the measurement pose
             _show_wrench(robot, "at start (zeroed)")
         else:
-            print("   [dry-run] would move_l there at 0.05 m/s, then zero the FT 300-S.")
+            print("   [dry-run] would move_l there at 0.2 m/s, then zero the FT 300-S.")
 
-        # --- Phase 2: guarded move (not gated) ----------------------------
+        if live and not _confirm(skip_prompt):
+            print("Aborted (no confirmation).")
+            return
+
+        # --- Phase 3: guarded move (not gated) ----------------------------
         print(f"\n3) guarded move: descend {_GUARD_DIR} at {_GUARD_SPEED} m/s "
               f"until {_GUARD_FORCE_N} N, then stop & hold")
         if live:
@@ -187,7 +200,11 @@ def main(dry_run: bool = True, skip_prompt: bool = False) -> None:
             print("   [dry-run] would speedl down and stop at the threshold "
                   "(cmd 5 -> cmd 2; not gated).")
 
-        # --- Phase 3: maintain constant force (gated by FORCE_MODE_ENABLED) -
+        if live and not _confirm(skip_prompt):
+            print("Aborted (no confirmation).")
+            return
+
+        # --- Phase 4: maintain constant force (gated by FORCE_MODE_ENABLED) -
         print(f"\n4) maintain force: press {_PRESS_DIR} at constant {_PRESS_FORCE_N} N "
               f"for {_PRESS_HOLD_S} s (single-axis: only Z compliant)")
         if live:
@@ -209,10 +226,10 @@ def main(dry_run: bool = True, skip_prompt: bool = False) -> None:
                   "force_mode_enabled=True) and hold the force, then cmd 6.")
 
         # --- retract & home ----------------------------------------------
-        print("\n5) retract +5 cm in Z, then home")
+        print("\n5) retract +20 cm in Z, then home")
         if live:
             try:
-                robot.move_l([0.0, 0.0, 0.05, 0, 0, 0], relative=True,
+                robot.move_l([0.0, 0.0, 0.2, 0, 0, 0], relative=True,
                              speed=0.03, blocking=blocking)
             except ValueError as exc:
                 print(f"   (skipped retract — {exc})")
@@ -222,7 +239,7 @@ def main(dry_run: bool = True, skip_prompt: bool = False) -> None:
 
     print("\nDone. (Context manager disconnected the robot.)")
     if not live:
-        print("Re-run with --live (and --yes to skip the prompt) on the real robot.")
+        print("Re-run with --live (and --yes to skip the prompts) on the real robot.")
 
 
 if __name__ == "__main__":
