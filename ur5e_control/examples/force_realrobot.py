@@ -52,23 +52,32 @@ if _ROOT not in sys.path:
 
 from ur5e_control import RobotConfig, UR5eRobot
 
-# A safe Cartesian start pose ABOVE the surface (UR base frame == world by
-# default). Inside the default workspace x(-0.4,0.4) y(-0.565,-0.265) z(-0.1,0.4).
-# Tool pointing down (rx=0, ry=-3.14, rz=0). Adjust to your cell if needed.
-_START_POSE = [0.0, -0.35, 0.20, 0.0, -3.14, 0.0]
+# The READY pose: a safe Cartesian pose ABOVE the surface that every phase
+# returns to (with NO load) to re-zero the FT 300-S before running. UR base frame
+# == world by default. Inside the default workspace x(-0.4,0.4) y(-0.565,-0.265)
+# z(-0.1,0.4). Tool pointing down (rx=0, ry=-3.14, rz=0). Adjust to your cell.
+_READY_POSE = [0.0, -0.35, 0.20, 0.0, -3.14, 0.0]
+_READY_SPEED = 0.2          # m/s — moving to ready is free-space, can be brisk
 
-# Phase-2 guarded move: descend along -Z until this contact force, then stop.
+# Phase 2 guarded move: descend along -Z until this contact force, then stop.
 _GUARD_DIR = [0.0, 0.0, -1.0]
-_GUARD_SPEED = 0.02          # m/s — slow approach
+# Overshoot ~= contact_stiffness * speed * loop_latency. Keep the speed low and
+# poll fast so the PC-side stop lands near the threshold (a stiff surface still
+# overshoots a few N at higher speed; for <1 N you'd need a daemon-side stop).
+_GUARD_SPEED = 0.01          # m/s — slow approach (halved to cut overshoot)
+_GUARD_POLL_S = 0.005        # s — fast wrench polling (was 0.02) to detect sooner
 _GUARD_FORCE_N = 10.0        # N — stop at this contact force
 _GUARD_MAX_TRAVEL = 0.12     # m — give up (and stop) past this
 
-# Phase-3 maintain force: press straight down with a constant force.
+# Phase 3 maintain force: press straight down with a constant force. It starts
+# from the READY pose, so force_mode first descends (at speed_limit) until it
+# feels the surface, then regulates the force — give the hold enough time for
+# both the descent and the hold.
 _PRESS_DIR = [0.0, 0.0, -1.0]   # single-axis: only Z compliant
 _PRESS_FORCE_N = 10.0           # N — keep modest for bring-up
-_PRESS_SPEED_LIMIT = 0.03       # m/s — compliant-axis speed cap
+_PRESS_SPEED_LIMIT = 0.03       # m/s — compliant-axis speed cap (descent speed)
 _PRESS_MAX_TRAVEL = 0.05        # m — compliant-axis travel cap
-_PRESS_HOLD_S = 4.0             # s — how long to hold the force
+_PRESS_HOLD_S = 8.0             # s — descent-from-ready + hold (tune to your gap)
 _PRESS_POLL_S = 0.5            # s — wrench print period while holding
 
 
@@ -106,6 +115,22 @@ def _zero_ft300(robot: UR5eRobot) -> None:
         return
     ft.zero()
     print("   FT 300-S zeroed — current no-load reading is the new baseline.")
+
+
+def _goto_ready_and_zero(robot: UR5eRobot, live: bool, blocking: bool) -> None:
+    """Return to the READY pose (no load) and software-tare the FT 300-S.
+
+    Run at the start of every motion phase so each one begins from the same
+    no-load reference: move up to ``_READY_POSE`` (free space), then zero. This
+    defeats the FT 300-S drift/residual-offset between phases.
+    """
+    print(f"   -> ready pose {_READY_POSE}, then zero the FT 300-S (no load)")
+    if live:
+        robot.move_l(_READY_POSE, speed=_READY_SPEED, blocking=blocking)
+        _zero_ft300(robot)
+        _show_wrench(robot, "ready (zeroed)")
+    else:
+        print("   [dry-run] would move to ready pose and zero the FT 300-S.")
 
 
 def _confirm(skip_prompt: bool) -> bool:
@@ -171,28 +196,20 @@ def main(dry_run: bool = True, skip_prompt: bool = False) -> None:
         print("1) baseline wrench at rest (sanity-check the FT 300)")
         _show_wrench(robot, "rest")
 
-        # --- Phase 2: move to a safe start pose, then ZERO (no load) -------
-        print(f"\n2) move to safe start pose {_START_POSE}, then ZERO the FT 300-S")
-        if live:
-            robot.move_l(_START_POSE, speed=0.2, blocking=blocking)
-            _zero_ft300(robot)   # tare here: no contact, at the measurement pose
-            _show_wrench(robot, "at start (zeroed)")
-        else:
-            print("   [dry-run] would move_l there at 0.2 m/s, then zero the FT 300-S.")
-
+        # --- Phase 2: guarded move (each phase: ready+zero, then run) ------
+        print(f"\n2) guarded move: descend {_GUARD_DIR} at {_GUARD_SPEED} m/s "
+              f"until {_GUARD_FORCE_N} N, then stop & hold")
         if live and not _confirm(skip_prompt):
             print("Aborted (no confirmation).")
             return
-
-        # --- Phase 3: guarded move (not gated) ----------------------------
-        print(f"\n3) guarded move: descend {_GUARD_DIR} at {_GUARD_SPEED} m/s "
-              f"until {_GUARD_FORCE_N} N, then stop & hold")
+        _goto_ready_and_zero(robot, live, blocking)
         if live:
             contact = robot.force.guarded_move(
                 direction=_GUARD_DIR,
                 speed=_GUARD_SPEED,
                 force_threshold_n=_GUARD_FORCE_N,
                 max_travel=_GUARD_MAX_TRAVEL,
+                poll_interval=_GUARD_POLL_S,   # fast poll -> less overshoot
             )
             print(f"   contact wrench: {[round(v, 2) for v in contact]} (N,Nm)")
             _show_wrench(robot, "holding contact")
@@ -200,13 +217,13 @@ def main(dry_run: bool = True, skip_prompt: bool = False) -> None:
             print("   [dry-run] would speedl down and stop at the threshold "
                   "(cmd 5 -> cmd 2; not gated).")
 
+        # --- Phase 3: maintain force (ready+zero, then press) -------------
+        print(f"\n3) maintain force: press {_PRESS_DIR} at constant {_PRESS_FORCE_N} N "
+              f"for {_PRESS_HOLD_S} s (single-axis: only Z compliant)")
         if live and not _confirm(skip_prompt):
             print("Aborted (no confirmation).")
             return
-
-        # --- Phase 4: maintain constant force (gated by FORCE_MODE_ENABLED) -
-        print(f"\n4) maintain force: press {_PRESS_DIR} at constant {_PRESS_FORCE_N} N "
-              f"for {_PRESS_HOLD_S} s (single-axis: only Z compliant)")
+        _goto_ready_and_zero(robot, live, blocking)
         if live:
             robot.force.maintain_force(
                 direction=_PRESS_DIR,
@@ -225,17 +242,13 @@ def main(dry_run: bool = True, skip_prompt: bool = False) -> None:
             print("   [dry-run] would enter force_mode (cmd 4, armed via "
                   "force_mode_enabled=True) and hold the force, then cmd 6.")
 
-        # --- retract & home ----------------------------------------------
-        print("\n5) retract +20 cm in Z, then home")
+        # --- Phase 4: back to ready, then home ---------------------------
+        print("\n4) return to ready pose, then home")
         if live:
-            try:
-                robot.move_l([0.0, 0.0, 0.2, 0, 0, 0], relative=True,
-                             speed=0.03, blocking=blocking)
-            except ValueError as exc:
-                print(f"   (skipped retract — {exc})")
+            _goto_ready_and_zero(robot, live, blocking)
             robot.home(speed=0.1, blocking=blocking)
         else:
-            print("   [dry-run] would retract then home.")
+            print("   [dry-run] would return to ready, then home.")
 
     print("\nDone. (Context manager disconnected the robot.)")
     if not live:
