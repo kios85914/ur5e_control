@@ -60,6 +60,15 @@ def test_state_includes_ft300_key_null_when_not_enabled():
     assert RobotService().state()["ft300"] is None
 
 
+def test_connect_accepts_ft300_enabled_param():
+    """The connect form's ft300_enabled flag reaches RobotConfig."""
+    svc = RobotService()
+    res = svc.connect({"dry_run": True, "ft300_enabled": True})
+    assert res["ok"] is True
+    # the built robot carries the flag (the stream itself only starts when live)
+    assert svc._robot.config.ft300_enabled is True
+
+
 def test_zero_ft300_reports_cleanly_when_unavailable():
     svc = RobotService()
     # no robot -> NotConnected

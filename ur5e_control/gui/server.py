@@ -136,6 +136,10 @@ class RobotService:
                     pc_host=str(params.get("pc_host", RobotConfig().pc_host)),
                     script_port=int(params.get("script_port", RobotConfig().script_port)),
                     state_port=int(params.get("state_port", RobotConfig().state_port)),
+                    # Optional: read the real Robotiq FT 300/FT 300-S (URCap port
+                    # 63351) so the GUI's FT 300-S row + zero button work.
+                    ft300_enabled=bool(params.get("ft300_enabled", False)),
+                    ft300_port=int(params.get("ft300_port", RobotConfig().ft300_port)),
                 )
                 robot = UR5eRobot(config, dry_run=dry_run)
                 robot.connect()

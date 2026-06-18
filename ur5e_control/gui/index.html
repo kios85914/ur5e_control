@@ -141,6 +141,9 @@ input[type=text],input[type=number]{width:100%;background:var(--bg-alt);border:1
       <div style="margin-top:14px">
         <label class="toggle"><input type="checkbox" id="dryrun" checked><span class="track"></span><span id="dryLabel">dry-run (no robot)</span></label>
       </div>
+      <div style="margin-top:10px">
+        <label class="toggle"><input type="checkbox" id="ft300en"><span class="track"></span><span>read FT 300-S (Robotiq port 63351)</span></label>
+      </div>
       <div class="btns">
         <button class="btn primary" id="btnConnect">Connect</button>
         <button class="btn ghost" id="btnDisconnect">Disconnect</button>
@@ -326,7 +329,8 @@ input[type=text],input[type=number]{width:100%;background:var(--bg-alt);border:1
     if(!dry && !confirm("Connect to the REAL robot at "+$("ip").value+"?\nThe arm may move on the next command. Keep the e-stop in reach."))return;
     await act("connect ("+(dry?"dry-run":"LIVE")+")","/api/connect",{
       controller_ip:$("ip").value,pc_host:$("pchost").value,
-      script_port:+$("scriptPort").value,state_port:+$("statePort").value,dry_run:dry});
+      script_port:+$("scriptPort").value,state_port:+$("statePort").value,dry_run:dry,
+      ft300_enabled:$("ft300en").checked});
     poll();
   });
   $("btnDisconnect").addEventListener("click",async()=>{await act("disconnect","/api/disconnect");poll();});
