@@ -70,13 +70,39 @@ _PRESS_POLL_S = 0.5            # s — wrench print period while holding
 
 
 def _show_wrench(robot: UR5eRobot, label: str) -> None:
-    """Print the latest TCP pose + wrench, or note no live state (dry-run)."""
+    """Print the latest wrench — the real FT 300-S if available, else get_tcp_force."""
+    ft = getattr(robot, "ft300", None)
+    if ft is not None:
+        try:
+            w = ft.read()  # real FT 300-S, software-tared after _zero_ft300()
+            print(f"   {label}: FT300={[round(v, 2) for v in w]} (N,Nm)")
+            return
+        except ValueError:
+            pass  # not streaming yet -> fall back below
     try:
         s = robot.get_state()
         print(f"   {label}: tcp_z={s.tcp_pose[2]:+.4f} m  "
-              f"wrench={[round(v, 2) for v in s.wrench]} (N,Nm)")
+              f"get_tcp_force={[round(v, 2) for v in s.wrench]} (N,Nm)")
     except ValueError as exc:
         print(f"   {label}: (no live state: {exc})")
+
+
+def _zero_ft300(robot: UR5eRobot) -> None:
+    """Software-tare the FT 300-S at the CURRENT (no-load) pose, if available.
+
+    Call this with no external load, in the orientation you'll measure in. After
+    it, ``robot.ft300.read()`` reads ~0 and the residual offset is gone. Re-call
+    it whenever you return to this pose to defeat drift.
+    """
+    ft = getattr(robot, "ft300", None)
+    if ft is None:
+        print("   [dry-run / FT300 off] would zero the FT 300-S here.")
+        return
+    if not ft.wait_for_data(timeout=5.0):
+        print("   [!] FT 300-S not streaming (check port 63351) — skipping zero.")
+        return
+    ft.zero()
+    print("   FT 300-S zeroed — current no-load reading is the new baseline.")
 
 
 def _confirm(skip_prompt: bool) -> bool:
@@ -107,14 +133,16 @@ def main(dry_run: bool = True, skip_prompt: bool = False) -> None:
     """
     live = not dry_run
     blocking = live  # no state stream to converge against in dry-run
-    # Arm force_mode (cmd 4) on the uploaded daemon — this is the whole point of
-    # the validation. Harmless in dry-run (nothing is uploaded).
-    config = RobotConfig(force_mode_enabled=True)
+    # Arm force_mode (cmd 4) on the uploaded daemon, AND read the real Robotiq
+    # FT 300/FT 300-S from the URCap stream (port 63351) so guarded_move triggers
+    # on the actual sensor and we can zero it. Harmless in dry-run (no sockets).
+    config = RobotConfig(force_mode_enabled=True, ft300_enabled=True)
 
     mode = "LIVE (real robot)" if live else "DRY-RUN (nothing moves)"
     print(f"== UR5e force-subsystem bring-up — {mode} ==")
     print(f"controller_ip={config.controller_ip}  pc_host={config.pc_host}  "
-          f"force_mode_enabled={config.force_mode_enabled}\n")
+          f"force_mode_enabled={config.force_mode_enabled}  "
+          f"ft300_enabled={config.ft300_enabled}\n")
 
     if live and not _confirm(skip_prompt):
         print("Aborted (no confirmation).")
@@ -134,13 +162,14 @@ def main(dry_run: bool = True, skip_prompt: bool = False) -> None:
         print("1) baseline wrench at rest (sanity-check the FT 300)")
         _show_wrench(robot, "rest")
 
-        # --- move to a safe start pose above the surface ------------------
-        print(f"\n2) move to safe start pose {_START_POSE}")
+        # --- move to a safe start pose, then ZERO the FT 300-S (no load) --
+        print(f"\n2) move to safe start pose {_START_POSE}, then ZERO the FT 300-S")
         if live:
             robot.move_l(_START_POSE, speed=0.05, blocking=blocking)
-            _show_wrench(robot, "at start")
+            _zero_ft300(robot)   # tare here: no contact, at the measurement pose
+            _show_wrench(robot, "at start (zeroed)")
         else:
-            print("   [dry-run] would move_l there at 0.05 m/s.")
+            print("   [dry-run] would move_l there at 0.05 m/s, then zero the FT 300-S.")
 
         # --- Phase 2: guarded move (not gated) ----------------------------
         print(f"\n3) guarded move: descend {_GUARD_DIR} at {_GUARD_SPEED} m/s "
