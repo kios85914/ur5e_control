@@ -246,7 +246,13 @@ input[type=text],input[type=number]{width:100%;background:var(--bg-alt);border:1
   async function act(label,path,body){
     if(inflight)return;inflight=true;
     log("→ "+label+" …","req");
-    try{const res=await(body!==undefined?api(path,body):api(path));
+    try{
+      // Actions are ALWAYS POST. (api(path) with no body would default to GET,
+      // which 404s these POST-only routes — that was the zero/home/stop bug.)
+      const opt=body!==undefined
+        ?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}
+        :{method:"POST"};
+      const res=await fetch(path,opt).then(r=>r.json());
       if(res&&res.ok===false)log("✗ "+label+": "+(res.type?res.type+" — ":"")+(res.error||"failed"),"err");
       else log("✓ "+label,"ok");
       return res;

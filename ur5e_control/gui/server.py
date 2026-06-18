@@ -309,11 +309,11 @@ def make_handler(service: RobotService, html_path: Path = _HTML_PATH):
                 return
             method_name, needs_body = route
             try:
-                params: dict[str, Any] = {}
-                if needs_body:
-                    length = int(self.headers.get("Content-Length", 0))
-                    raw = self.rfile.read(length) if length else b"{}"
-                    params = json.loads(raw or b"{}")
+                # Always drain the request body (even for no-body routes) so a
+                # keep-alive connection never desyncs if a client sends one.
+                length = int(self.headers.get("Content-Length", 0))
+                raw = self.rfile.read(length) if length else b""
+                params: dict[str, Any] = json.loads(raw or b"{}") if needs_body else {}
                 fn = getattr(service, method_name)
                 result = fn(params) if needs_body else fn()
                 self._send_json(result)
