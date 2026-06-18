@@ -168,6 +168,7 @@ footer{border-top:1px solid var(--border);padding:26px 24px;text-align:center;co
       <div class="toc-label"><span lang="en">Reference</span><span lang="ja">リファレンス</span><span lang="zh">參考</span></div>
       <a href="#api"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span lang="en">API Reference</span><span lang="ja">API リファレンス</span><span lang="zh">API 參考</span></a>
       <a href="#examples"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg><span lang="en">Examples</span><span lang="ja">サンプル</span><span lang="zh">範例</span></a>
+      <a href="#filemap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span lang="en">Project Map</span><span lang="ja">ファイル一覧</span><span lang="zh">檔案總覽</span></a>
       <div class="toc-label"><span lang="en">Operations</span><span lang="ja">運用</span><span lang="zh">操作</span></div>
       <a href="#safety"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span lang="en">Safety</span><span lang="ja">安全</span><span lang="zh">安全</span></a>
       <a href="#force"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v6"/><path d="M12 22v-6"/><path d="M2 12h6"/><path d="M22 12h-6"/></svg><span lang="en">Force Control</span><span lang="ja">力制御</span><span lang="zh">力量控制</span></a>
@@ -580,6 +581,62 @@ python -m ur5e_control.examples.python_with_gui     <span class="tok-c"># open h
         <div class="callout info">
           <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>
           <div class="body"><span lang="en"><b>Control-mode toggle</b> (top of the panel): <b>Python control</b> locks the GUI's move/jog/home (live monitor) so a human can't fight your script — <b>STOP always works</b>. <b>GUI control</b> re-enables the buttons for manual jogging. The lock is enforced server-side, not just hidden.</span><span lang="ja"><b>制御モード切替</b>(パネル上部): <b>Python control</b> は GUI の move/jog/home をロック(ライブモニタ)し、人がスクリプトと競合しないように —— <b>STOP は常に有効</b>。<b>GUI control</b> で手動ジョグ用にボタンを再有効化。ロックはサーバ側で強制(隠すだけではない)。</span><span lang="zh"><b>控制模式切換</b>(面板上方): <b>Python control</b> 會鎖住 GUI 的 move/jog/home(純監看),避免人手跟腳本打架 —— <b>STOP 永遠可用</b>。<b>GUI control</b> 把按鈕重新啟用以便手動 jog。鎖定是後端強制,不只是隱藏。</span></div>
+        </div>
+      </section>
+
+      <!-- PROJECT MAP -->
+      <section id="filemap">
+        <div class="sec-head"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span><h2><span lang="en">Project Map</span><span lang="ja">ファイル一覧</span><span lang="zh">檔案總覽</span></h2></div>
+        <p class="lead" lang="en">Where things live, how to open the GUI, and the force examples. Paths are relative to the repo root.</p>
+        <p class="lead" lang="ja">主要ファイルの場所、GUI の開き方、力制御サンプル。パスはリポジトリのルートからの相対です。</p>
+        <p class="lead" lang="zh">重要檔案的位置、GUI 怎麼開、力量範例。路徑相對於 repo 根目錄。</p>
+
+        <h3><span lang="en">Key files</span><span lang="ja">主要ファイル</span><span lang="zh">重要檔案</span></h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th><span lang="en">file</span><span lang="ja">ファイル</span><span lang="zh">檔案</span></th><th><span lang="en">purpose</span><span lang="ja">役割</span><span lang="zh">作用</span></th></tr></thead>
+          <tbody>
+            <tr><td><code>ur5e_control/config.py</code></td><td><span lang="en">Single source of all settings: IP, speeds, workspace, <code>force_mode_enabled</code>, <code>ft300_enabled</code>/<code>ft300_port</code>, damping/gain.</span><span lang="ja">全設定の単一ソース: IP・速度・作業範囲・<code>force_mode_enabled</code>・<code>ft300_enabled</code>/<code>ft300_port</code>・damping/gain。</span><span lang="zh">所有設定的單一來源: IP、速度、workspace、<code>force_mode_enabled</code>、<code>ft300_enabled</code>/<code>ft300_port</code>、damping/gain。</span></td></tr>
+            <tr><td><code>ur5e_control/robot.py</code></td><td><span lang="en">Main entry <code>UR5eRobot</code>: <code>move_l/move_j/home/get_state/serve_gui/force/ft300</code>.</span><span lang="ja">メイン入口 <code>UR5eRobot</code>: <code>move_l/move_j/home/get_state/serve_gui/force/ft300</code>。</span><span lang="zh">主入口 <code>UR5eRobot</code>: <code>move_l/move_j/home/get_state/serve_gui/force/ft300</code>。</span></td></tr>
+            <tr><td><code>ur5e_control/motion.py</code></td><td><span lang="en">Command encoding, blocking convergence, <code>speedl</code>/force_mode primitives.</span><span lang="ja">コマンドのエンコード、ブロッキング収束、<code>speedl</code>/force_mode。</span><span lang="zh">指令編碼、blocking 收斂、<code>speedl</code>/force_mode。</span></td></tr>
+            <tr><td><code>ur5e_control/urscript/motion_daemon.script</code></td><td><span lang="en">The URScript daemon running ON the UR controller (cmd 0–8 + state stream). Re-<code>connect()</code> to apply edits.</span><span lang="ja">UR コントローラ上で動く URScript デーモン(cmd 0–8 + 状態ストリーム)。変更は再 <code>connect()</code> で反映。</span><span lang="zh">跑在 UR 控制器上的 URScript daemon(cmd 0–8 + 狀態串流)。改了要重新 <code>connect()</code> 才生效。</span></td></tr>
+            <tr><td><code>ur5e_control/force/controller.py</code></td><td><span lang="en"><code>guarded_move</code> (stop on force), <code>maintain_force</code> (hold force), <code>hold_compliant</code>, <code>impedance_move</code>.</span><span lang="ja"><code>guarded_move</code>(力で停止)・<code>maintain_force</code>(力維持)・<code>hold_compliant</code>・<code>impedance_move</code>。</span><span lang="zh"><code>guarded_move</code>(到力就停)、<code>maintain_force</code>(維持力)、<code>hold_compliant</code>、<code>impedance_move</code>。</span></td></tr>
+            <tr><td><code>ur5e_control/force/sensor.py</code></td><td><span lang="en"><code>RobotiqFT300Stream</code> (real sensor on port 63351 + <code>zero()</code>); <code>RobotiqFT300</code> (reads get_tcp_force).</span><span lang="ja"><code>RobotiqFT300Stream</code>(ポート 63351 の実センサ + <code>zero()</code>);<code>RobotiqFT300</code>(get_tcp_force を読む)。</span><span lang="zh"><code>RobotiqFT300Stream</code>(port 63351 真感測器 + <code>zero()</code>);<code>RobotiqFT300</code>(讀 get_tcp_force)。</span></td></tr>
+            <tr><td><code>ur5e_control/gui/server.py</code> · <code>gui/index.html</code></td><td><span lang="en">Web panel: backend (state JSON, APIs, ft300, zero) + front-end (side-by-side force display).</span><span lang="ja">Web パネル: バックエンド(state JSON・各 API・ft300・zero)+ フロントエンド(力の並列表示)。</span><span lang="zh">網頁面板: 後端(state JSON、各 API、ft300、zero)+ 前端(力值並排顯示)。</span></td></tr>
+            <tr><td><code>connection.py</code> · <code>state.py</code> · <code>safety.py</code> · <code>script_sender.py</code></td><td><span lang="en">Socket transport · frame parsing · safety checks · daemon upload.</span><span lang="ja">ソケット転送 · フレーム解析 · 安全チェック · デーモン送信。</span><span lang="zh">socket 傳輸 · 解析回傳值 · 安全檢查 · 上傳 daemon。</span></td></tr>
+          </tbody>
+        </table></div>
+
+        <h3><span lang="en">Open the GUI</span><span lang="ja">GUI の開き方</span><span lang="zh">GUI 怎麼開</span></h3>
+        <p lang="en">Attach the browser monitor to your robot (recommended — shows the live FT 300-S when <code>ft300_enabled=True</code>), or run it standalone (dry-run by default). Then open <code>http://127.0.0.1:8080</code>.</p>
+        <p lang="ja">あなたの robot にブラウザモニタを接続(推奨 —— <code>ft300_enabled=True</code> なら FT 300-S をライブ表示)、またはスタンドアロンで起動(既定 dry-run)。<code>http://127.0.0.1:8080</code> を開く。</p>
+        <p lang="zh">把瀏覽器監看接到你的 robot(推薦 —— <code>ft300_enabled=True</code> 時會即時顯示 FT 300-S),或獨立啟動(預設 dry-run)。然後開 <code>http://127.0.0.1:8080</code>。</p>
+<pre><code><span class="tok-k">from</span> ur5e_control <span class="tok-k">import</span> UR5eRobot, RobotConfig
+
+cfg = RobotConfig(controller_ip=<span class="tok-s">"&lt;UR3 IP&gt;"</span>, ft300_enabled=<span class="tok-k">True</span>)
+<span class="tok-k">with</span> UR5eRobot(cfg) <span class="tok-k">as</span> robot:
+    robot.<span class="tok-f">serve_gui</span>()        <span class="tok-c"># http://127.0.0.1:8080</span>
+    <span class="tok-f">input</span>(<span class="tok-s">"Enter to quit"</span>)
+
+<span class="tok-c"># or standalone (dry-run): python -m ur5e_control.gui</span></code></pre>
+        <div class="callout info">
+          <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span>
+          <div class="body"><span lang="en">In the panel, the <b>Wrench</b> row is <code>get_tcp_force()</code> (the UR's own value); the <b>FT 300-S</b> row is the real Robotiq sensor (port 63351). With <b>no load</b>, press the FT 300-S <b>zero</b> button first, then apply force.</span><span lang="ja">パネルでは <b>Wrench</b> 行が <code>get_tcp_force()</code>(UR 自身の値)、<b>FT 300-S</b> 行が実 Robotiq センサ(ポート 63351)。<b>無負荷</b>でまず FT 300-S の <b>zero</b> ボタンを押してから力をかける。</span><span lang="zh">面板裡 <b>Wrench</b> 行是 <code>get_tcp_force()</code>(UR 自己的值),<b>FT 300-S</b> 行是真正的 Robotiq 感測器(port 63351)。<b>無負載</b>時先按 FT 300-S 的 <b>zero</b> 按鈕,再施力。</span></div>
+        </div>
+
+        <h3><span lang="en">Force examples: stop-on-force / hold-force</span><span lang="ja">力サンプル: 力で停止 / 力維持</span><span lang="zh">力量範例: 到力就停 / 維持力</span></h3>
+        <p lang="en"><code>ur5e_control/examples/force_realrobot.py</code> is the real-robot walkthrough: baseline → <code>guarded_move</code> (descend until the contact force, then stop &amp; hold) → <code>maintain_force</code> (hold a constant force) → retract. Dry-run preview by default; add <code>--live</code> for the real robot (it asks you to type <code>go</code>).</p>
+        <p lang="ja"><code>ur5e_control/examples/force_realrobot.py</code> が実機ウォークスルー: baseline → <code>guarded_move</code>(接触力まで下降して停止・保持)→ <code>maintain_force</code>(一定力を維持)→ 後退。既定は dry-run プレビュー、<code>--live</code> で実機(<code>go</code> 入力を要求)。</p>
+        <p lang="zh"><code>ur5e_control/examples/force_realrobot.py</code> 是真機走一遍: baseline → <code>guarded_move</code>(下壓到接觸力就停住保持)→ <code>maintain_force</code>(維持定力)→ 收回。預設 dry-run 預覽,加 <code>--live</code> 才動真機(會要你輸入 <code>go</code>)。</p>
+<pre><code>python -m ur5e_control.examples.force_realrobot          <span class="tok-c"># dry-run preview</span>
+python -m ur5e_control.examples.force_realrobot --live   <span class="tok-c"># real robot</span>
+
+<span class="tok-c"># or in your own code:</span>
+robot.force.<span class="tok-f">guarded_move</span>([<span class="tok-n">0</span>,<span class="tok-n">0</span>,<span class="tok-n">-1</span>], speed=<span class="tok-n">0.01</span>, force_threshold_n=<span class="tok-n">10</span>, max_travel=<span class="tok-n">0.1</span>)  <span class="tok-c"># stop at 10 N</span>
+robot.force.<span class="tok-f">maintain_force</span>([<span class="tok-n">0</span>,<span class="tok-n">0</span>,<span class="tok-n">-1</span>], target_n=<span class="tok-n">10</span>)     <span class="tok-c"># hold 10 N (needs force_mode_enabled)</span></code></pre>
+
+        <div class="callout warn">
+          <span class="ci"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+          <div class="body"><span lang="en"><b>UR3 (CB-series) note.</b> <code>get_tcp_force()</code> is an <em>estimate</em> (no built-in wrist sensor) — use the FT 300-S for real force. <code>guarded_move</code> triggers on the PC-side wrench, so with <code>ft300_enabled=True</code> it stops on the <b>real</b> sensor (accurate). <code>maintain_force</code>/impedance run UR <code>force_mode</code>, which on a UR3 regulates against the UR's own estimate — prefer <code>guarded_move</code> + FT 300-S for precise force on a UR3.</span><span lang="ja"><b>UR3(CB シリーズ)の注意。</b><code>get_tcp_force()</code> は<em>推定値</em>(内蔵手首センサ無し)—— 実際の力は FT 300-S を使う。<code>guarded_move</code> は PC 側のレンチで判定するので <code>ft300_enabled=True</code> なら<b>実</b>センサで停止(高精度)。<code>maintain_force</code>/インピーダンスは UR <code>force_mode</code> で動き、UR3 では UR 自身の推定値で調節する —— UR3 で精密な力なら <code>guarded_move</code> + FT 300-S を優先。</span><span lang="zh"><b>UR3(CB 系列)提醒。</b><code>get_tcp_force()</code> 是<em>估算值</em>(沒有內建手腕感測器)—— 真實力用 FT 300-S。<code>guarded_move</code> 是用 PC 端 wrench 判定,所以 <code>ft300_enabled=True</code> 時它會在<b>真</b>感測器上停(準確)。<code>maintain_force</code>/impedance 走 UR <code>force_mode</code>,在 UR3 上是用 UR 自己的估算值調節 —— UR3 要精準定力,優先用 <code>guarded_move</code> + FT 300-S。</span></div>
         </div>
       </section>
 
