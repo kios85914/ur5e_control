@@ -57,9 +57,10 @@ def test_defaults_match_locked_values():
     assert cfg.home_pose == [0.0, -0.35, 0.25, 0.0, -3.14, 0.0]
     # Force-mode branches disabled by default (armed via render_daemon).
     assert cfg.force_mode_enabled is False
-    # force_mode stability tuning defaults (stable-leaning; tune on robot).
+    # force_mode stability tuning defaults. gain_scaling is None by default
+    # because force_mode_set_gain_scaling does not exist on CB-series ("G3").
     assert cfg.force_mode_damping == 0.2
-    assert cfg.force_mode_gain_scaling == 0.5
+    assert cfg.force_mode_gain_scaling is None
     # Real FT 300/FT 300-S reader (URCap port 63351) off by default.
     assert cfg.ft300_enabled is False
     assert cfg.ft300_port == 63351

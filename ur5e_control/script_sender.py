@@ -74,9 +74,13 @@ def render_daemon(
     * ``{{FORCE_MODE_ENABLED}}`` -> ``True``/``False`` from
       ``config.force_mode_enabled`` (arms the daemon's cmd 4/7 force branches;
       ``str(bool)`` renders the exact URScript boolean literal)
-    * ``{{FORCE_MODE_DAMPING}}`` / ``{{FORCE_MODE_GAIN_SCALING}}`` -> the
-      ``force_mode`` stability tuning from ``config`` (applied via
-      ``force_mode_set_damping`` / ``force_mode_set_gain_scaling``).
+    * ``{{FORCE_MODE_TUNING}}`` -> the ``force_mode`` stability calls, emitted
+      **conditionally**: ``force_mode_set_damping(<v>)`` when
+      ``config.force_mode_damping`` is not ``None``, and
+      ``force_mode_set_gain_scaling(<v>)`` when ``config.force_mode_gain_scaling``
+      is not ``None``. Either is omitted when ``None`` — important because
+      ``force_mode_set_gain_scaling`` does not exist on CB-series / "G3"
+      controllers and would raise *"not available in G3"*.
 
     Note ``controller_ip``/``script_port`` are *not* in the daemon — those are
     where the PC uploads *to* (see :func:`send_script`), not where the daemon
@@ -93,14 +97,27 @@ def render_daemon(
     """
     text = Path(path).read_text(encoding="utf-8")
     home = ", ".join(repr(float(v)) for v in config.home_pose)
+
+    # Build the force_mode tuning block: only emit calls whose config value is set
+    # (None -> omit). gain_scaling is omitted by default since CB-series ("G3")
+    # controllers lack force_mode_set_gain_scaling. Continuation lines keep the
+    # 16-space indent of the placeholder inside the cmd 4/7/8 branches.
+    tuning_lines = []
+    if config.force_mode_damping is not None:
+        tuning_lines.append(f"force_mode_set_damping({float(config.force_mode_damping)!r})")
+    if config.force_mode_gain_scaling is not None:
+        tuning_lines.append(
+            f"force_mode_set_gain_scaling({float(config.force_mode_gain_scaling)!r})"
+        )
+    tuning = ("\n" + " " * 16).join(tuning_lines)
+
     for token, value in (
         ("{{PC_HOST}}", str(config.pc_host)),
         ("{{STATE_PORT}}", str(int(config.state_port))),
         ("{{HOME_POSE}}", f"p[{home}]"),
         # URScript booleans are `True`/`False`; str(bool) matches exactly.
         ("{{FORCE_MODE_ENABLED}}", str(bool(config.force_mode_enabled))),
-        ("{{FORCE_MODE_DAMPING}}", repr(float(config.force_mode_damping))),
-        ("{{FORCE_MODE_GAIN_SCALING}}", repr(float(config.force_mode_gain_scaling))),
+        ("{{FORCE_MODE_TUNING}}", tuning),
     ):
         text = text.replace(token, value)
     return text.encode("utf-8")

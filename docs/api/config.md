@@ -41,8 +41,8 @@ field has a default, so `RobotConfig()` is fully usable out of the box.
 | `max_speed` | `float` | `0.25` | Hard upper bound on commanded speed (m/s or rad/s). |
 | `home_pose` | `List[float]` | `[0.0, -0.35, 0.25, 0.0, -3.14, 0.0]` | Home pose `[x, y, z, rx, ry, rz]` (m, rad) in UR base frame. |
 | `force_mode_enabled` | `bool` | `False` | Arms the daemon's `force_mode` branches (cmd 4 maintain-force, cmd 7 impedance), injected as `FORCE_MODE_ENABLED` by `render_daemon`. Keep `False` until the FT 300 is mounted and validated. |
-| `force_mode_damping` | `float` | `0.2` | `force_mode_set_damping` [0..1]. Higher = compliant axes decelerate faster = more stable but sluggish; lower = snappier but can chatter on stiff contact. **Tune on robot.** |
-| `force_mode_gain_scaling` | `float` | `0.5` | `force_mode_set_gain_scaling` [0..2]. Lower = gentler force tracking = more stable. **Tune on robot.** |
+| `force_mode_damping` | `Optional[float]` | `0.2` | `force_mode_set_damping` [0..1]. Higher = compliant axes decelerate faster = more stable but sluggish. `None` omits the call. **Tune on robot.** |
+| `force_mode_gain_scaling` | `Optional[float]` | `None` | `force_mode_set_gain_scaling` [0..2], lower = more stable. **Defaults to `None` (omitted)** — this function does **not exist on CB-series / "G3"** (e.g. UR3) and errors *"not available in G3"*. Set a value only on e-Series. |
 | `ft300_enabled` | `bool` | `False` | Read the REAL Robotiq FT 300/FT 300-S from the URCap stream (`ft300_port`) instead of the UR's own `get_tcp_force()`. `get_tcp_force()` is NOT the external sensor. |
 | `ft300_port` | `int` | `63351` | Controller TCP port where the Robotiq URCap publishes the live FT 300/FT 300-S wrench. |
 

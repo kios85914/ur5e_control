@@ -43,15 +43,28 @@ def test_render_daemon_force_mode_flag_injected():
     assert "{{FORCE_MODE_ENABLED}}" not in on
 
 
-def test_render_daemon_force_mode_tuning_injected():
-    """force_mode damping / gain_scaling render as numeric globals."""
-    out = render_daemon(RobotConfig(force_mode_damping=0.3, force_mode_gain_scaling=0.7)).decode("ascii")
-    assert "global FORCE_MODE_DAMPING      = 0.3" in out
-    assert "global FORCE_MODE_GAIN_SCALING = 0.7" in out
-    assert "{{FORCE_MODE_DAMPING}}" not in out and "{{FORCE_MODE_GAIN_SCALING}}" not in out
-    # and the daemon actually applies them before entering force_mode
-    assert "force_mode_set_damping(FORCE_MODE_DAMPING)" in out
-    assert "force_mode_set_gain_scaling(FORCE_MODE_GAIN_SCALING)" in out
+def test_render_daemon_force_mode_tuning_conditional():
+    """Tuning calls are emitted only when their config value is not None."""
+    # both set -> both calls present with literal values, no placeholder left
+    both = render_daemon(
+        RobotConfig(force_mode_damping=0.3, force_mode_gain_scaling=0.7)
+    ).decode("ascii")
+    assert "force_mode_set_damping(0.3)" in both
+    assert "force_mode_set_gain_scaling(0.7)" in both
+    assert "{{FORCE_MODE_TUNING}}" not in both
+
+    # gain_scaling None (the default / CB3-safe) -> NO gain call, damping stays.
+    # This is the fix for "force_mode_set_gain_scaling not available in G3".
+    cb3 = render_daemon(RobotConfig(force_mode_damping=0.2)).decode("ascii")
+    assert "force_mode_set_damping(0.2)" in cb3
+    assert "force_mode_set_gain_scaling" not in cb3
+
+    # both None -> neither call appears
+    none = render_daemon(
+        RobotConfig(force_mode_damping=None, force_mode_gain_scaling=None)
+    ).decode("ascii")
+    assert "force_mode_set_damping" not in none
+    assert "force_mode_set_gain_scaling" not in none
 
 
 def test_render_daemon_default_config_is_valid_urscript_shape():

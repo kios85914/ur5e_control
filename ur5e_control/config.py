@@ -20,7 +20,7 @@ Units and frames (used throughout the whole library):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 def _default_workspace_limits() -> Dict[str, Tuple[float, float]]:
@@ -93,17 +93,17 @@ class RobotConfig:
             the FT 300 is mounted and parameters are validated. Set ``True`` only
             after on-robot bring-up. (Guarded move, cmd 5, is a plain velocity
             move and is NOT gated by this.)
-        force_mode_damping: URScript ``force_mode_set_damping`` value [0..1],
-            injected into the daemon. Higher = the compliant axes decelerate
-            faster = **more stable but more sluggish**; lower = snappier but can
-            oscillate/chatter against a stiff surface. UR's default is very low
-            (~0.025); we default to ``0.2`` to damp contact oscillation. **Tune on
-            the robot.**
+        force_mode_damping: URScript ``force_mode_set_damping`` value [0..1].
+            Higher = the compliant axes decelerate faster = **more stable but more
+            sluggish**; lower = snappier but can oscillate/chatter. We default to
+            ``0.2``. Set to ``None`` to omit the call entirely (the daemon won't
+            invoke ``force_mode_set_damping``). **Tune on the robot.**
         force_mode_gain_scaling: URScript ``force_mode_set_gain_scaling`` value
-            [0..2], injected into the daemon. Scales the force-loop gain; **lower =
-            more stable** (less aggressive force tracking). UR's default is 1.0; we
-            default to ``0.5`` for stability on stiff contact. **Tune on the
-            robot.**
+            [0..2]; lower = gentler force tracking = more stable. **Defaults to
+            ``None`` (call omitted)** because ``force_mode_set_gain_scaling`` does
+            **not exist on CB-series / "G3" controllers** (e.g. a UR3) and would
+            raise *"not available in G3"*. Set a value (e.g. ``0.5``) only on
+            e-Series controllers that support it.
         ft300_enabled: When ``True``, the robot reads the **real Robotiq FT 300 /
             FT 300-S** from the URCap's TCP stream (see ``ft300_port``) instead of
             the UR's own ``get_tcp_force()``. Requires the FT sensor wired and the
@@ -131,8 +131,8 @@ class RobotConfig:
     max_speed: float = 0.25
     home_pose: List[float] = field(default_factory=_default_home_pose)
     force_mode_enabled: bool = False
-    force_mode_damping: float = 0.2
-    force_mode_gain_scaling: float = 0.5
+    force_mode_damping: Optional[float] = 0.2
+    force_mode_gain_scaling: Optional[float] = None
     ft300_enabled: bool = False
     ft300_port: int = 63351
 
