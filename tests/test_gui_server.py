@@ -49,6 +49,27 @@ def test_state_is_none_when_no_frame_yet():
     assert res["state"] is None  # dry-run streams nothing
 
 
+def test_state_includes_ft300_key_null_when_not_enabled():
+    svc = RobotService()
+    svc.connect({"dry_run": True})
+    res = svc.state()
+    # ft300 key always present; None when the sensor reader isn't enabled/available.
+    assert "ft300" in res
+    assert res["ft300"] is None
+    # also present before connecting (no robot)
+    assert RobotService().state()["ft300"] is None
+
+
+def test_zero_ft300_reports_cleanly_when_unavailable():
+    svc = RobotService()
+    # no robot -> NotConnected
+    assert svc.zero_ft300() == {"ok": False, "error": "not connected", "type": "NotConnected"}
+    # connected dry-run but FT 300 not enabled -> NoFT300
+    svc.connect({"dry_run": True})
+    res = svc.zero_ft300()
+    assert res["ok"] is False and res["type"] == "NoFT300"
+
+
 def test_move_l_not_connected_fails_cleanly():
     svc = RobotService()
     res = svc.move_l({"pose": [0, 0, 0, 0, 0, 0]})

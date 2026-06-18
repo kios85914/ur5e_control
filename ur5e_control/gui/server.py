@@ -179,6 +179,7 @@ class RobotService:
             base = self._status_unlocked()
             if robot is None:
                 base["state"] = None
+                base["ft300"] = None
                 return base
             try:
                 st = robot.get_state()
@@ -191,7 +192,21 @@ class RobotService:
                 }
             except Exception:
                 base["state"] = None  # no complete frame yet / dry-run
+            # Real FT 300/FT 300-S (URCap port 63351), when enabled. This is the
+            # external sensor -- distinct from state.wrench (get_tcp_force()).
+            base["ft300"] = self._read_ft300(robot)
             return base
+
+    @staticmethod
+    def _read_ft300(robot) -> Any:
+        """Return the FT 300-S wrench (software-tared) or ``None`` if unavailable."""
+        ft300 = getattr(robot, "ft300", None)
+        if ft300 is None:
+            return None
+        try:
+            return list(ft300.read())
+        except Exception:
+            return None  # streaming not up yet / no sample
 
     # -- motion (move/jog/home are gated; stop is always allowed) -------
     def move_l(self, params: dict[str, Any]) -> dict[str, Any]:
@@ -216,6 +231,25 @@ class RobotService:
     def home(self) -> dict[str, Any]:
         return self._op(lambda r: r.home(blocking=False), gated=True)
 
+    def zero_ft300(self) -> dict[str, Any]:
+        """Software-tare the FT 300-S (no motion; not gated by control mode)."""
+        with self._lock:
+            robot = self._robot
+        if robot is None:
+            return {"ok": False, "error": "not connected", "type": "NotConnected"}
+        ft300 = getattr(robot, "ft300", None)
+        if ft300 is None:
+            return {
+                "ok": False,
+                "error": "FT 300 not enabled (use RobotConfig(ft300_enabled=True))",
+                "type": "NoFT300",
+            }
+        try:
+            ft300.zero()
+        except Exception as exc:  # no data streaming yet, etc.
+            return {"ok": False, "error": str(exc), "type": type(exc).__name__}
+        return {"ok": True}
+
 
 # Route table: GET path -> service method; POST path -> (method, needs_body)
 _GET_ROUTES = {"/api/status": "status", "/api/state": "state"}
@@ -227,6 +261,7 @@ _POST_ROUTES = {
     "/api/move_j": ("move_j", True),
     "/api/stop": ("stop", False),
     "/api/home": ("home", False),
+    "/api/zero_ft300": ("zero_ft300", False),
 }
 
 

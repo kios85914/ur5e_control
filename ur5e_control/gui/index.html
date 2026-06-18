@@ -155,8 +155,10 @@ input[type=text],input[type=number]{width:100%;background:var(--bg-alt);border:1
       <div class="readout" id="poseGrid"></div>
       <div class="grp-title">Joints &nbsp;<span style="color:var(--fg-faint)">j0…j5 (rad)</span></div>
       <div class="readout" id="jointGrid"></div>
-      <div class="grp-title">Wrench &nbsp;<span style="color:var(--fg-faint)">fx fy fz (N) · tx ty tz (N·m)</span></div>
+      <div class="grp-title">Wrench &nbsp;<span style="color:var(--fg-faint)">get_tcp_force() — UR estimate · fx fy fz (N) · tx ty tz (N·m)</span></div>
       <div class="readout" id="wrenchGrid"></div>
+      <div class="grp-title" style="display:flex;align-items:center;gap:8px">FT 300-S &nbsp;<span style="color:var(--fg-faint)">real Robotiq sensor · port 63351</span><button id="btnZeroFT" style="margin-left:auto;font-size:11px;padding:2px 10px;cursor:pointer">zero</button></div>
+      <div class="readout" id="ft300Grid"></div>
     </section>
 
     <!-- CARTESIAN CONTROL -->
@@ -256,6 +258,7 @@ input[type=text],input[type=number]{width:100%;background:var(--bg-alt);border:1
   mkCells($("poseGrid"),AX);
   mkCells($("jointGrid"),["j0","j1","j2","j3","j4","j5"]);
   mkCells($("wrenchGrid"),["fx","fy","fz","tx","ty","tz"]);
+  mkCells($("ft300Grid"),["fx","fy","fz","tx","ty","tz"]);
 
   // cartesian jog rows
   (function(){const host=$("cartJog");AX.forEach((a,i)=>{
@@ -308,6 +311,11 @@ input[type=text],input[type=number]{width:100%;background:var(--bg-alt);border:1
       [0,1,2,3,4,5].forEach(i=>{$("jointGrid"+i).textContent="—";const c=$("jcur"+i);if(c)c.textContent="—";$("wrenchGrid"+i).textContent="—";});
       $("stamp").textContent= st&&st.connected ? (st.dry_run?"dry-run · no live state":"no frame yet") : "—";
     }
+    // FT 300-S (real sensor, port 63351) is at the top level of the response,
+    // independent of state.wrench; null when ft300 is not enabled / no sample.
+    const ft=st&&st.ft300;
+    if(ft){ft.forEach((v,i)=>$("ft300Grid"+i).textContent=fmt(v));}
+    else{[0,1,2,3,4,5].forEach(i=>$("ft300Grid"+i).textContent="—");}
   }
   async function poll(){try{const st=await api("/api/state");paint(st);}catch(e){}}
   setInterval(poll,300);poll();
@@ -325,6 +333,7 @@ input[type=text],input[type=number]{width:100%;background:var(--bg-alt);border:1
   $("estop").addEventListener("click",async()=>{await act("STOP","/api/stop");});
   modeBtns.forEach(b=>b.addEventListener("click",async()=>{await act("set mode: "+b.getAttribute("data-mode"),"/api/mode",{mode:b.getAttribute("data-mode")});poll();}));
   $("btnHome").addEventListener("click",async()=>{await act("home","/api/home");});
+  $("btnZeroFT").addEventListener("click",async()=>{await act("zero FT 300-S (no load!)","/api/zero_ft300");poll();});
   $("btnMoveL").addEventListener("click",async()=>{
     const pose=[0,1,2,3,4,5].map(i=>parseFloat($("abs"+i).value));
     if(pose.some(v=>Number.isNaN(v))){log("✗ move to pose: fill all 6 fields","err");return;}
