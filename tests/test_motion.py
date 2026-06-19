@@ -366,6 +366,44 @@ def test_move_l_blocking_keeps_polling_until_within_tol():
     assert len(sleeps) >= 3
 
 
+def test_orientation_angle_handles_double_cover():
+    """Equivalent (wrapped/negated) rotation vectors register as ~0 angle."""
+    import math
+
+    from ur5e_control.motion import _orientation_angle
+
+    rv = [0.0, -3.14, 0.5]
+    ang = math.sqrt(sum(c * c for c in rv))
+    wrapped = [c * (ang - 2 * math.pi) / ang for c in rv]  # same orientation
+    assert _orientation_angle(rv, wrapped) < 1e-6
+    assert _orientation_angle(rv, rv) < 1e-9
+    # a genuinely different orientation is a large angle
+    assert _orientation_angle(rv, [0.0, 0.0, 0.0]) > 3.0
+
+
+def test_move_l_blocking_converges_with_wrapped_orientation():
+    """Blocking move converges even when the controller reports the equivalent
+    (wrapped) rotation vector for a near-180deg pose — not a component compare."""
+    import math
+
+    cfg = RobotConfig()
+    world_target = [0.0, -0.35, 0.20, 0.0, -3.14, 0.5]
+    ur_target = cfg.world_to_ur(world_target)
+    # Position dead-on; orientation reported as the wrapped/negated equivalent
+    # (what get_actual_tcp_pose() returns near 180deg).
+    rv = ur_target[3:6]
+    ang = math.sqrt(sum(c * c for c in rv))
+    wrapped = [c * (ang - 2 * math.pi) / ang for c in rv]
+    reported = list(ur_target[:3]) + wrapped
+    conn = FakeConnection(state_frames=[_state_frame(reported)])
+    mc = MotionController(conn, cfg)
+
+    with mock.patch("ur5e_control.motion.time.sleep"):
+        mc.move_l(world_target, speed=0.1, blocking=True)  # must NOT TimeoutError
+
+    assert any(s.startswith("(0, ") for s in conn.sent)
+
+
 def test_blocking_ignores_empty_state_then_converges():
     """An empty latest_state ('' before any frame) is tolerated, not fatal."""
     cfg = RobotConfig()

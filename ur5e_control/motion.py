@@ -38,6 +38,7 @@ threshold.
 
 from __future__ import annotations
 
+import math
 import time
 from typing import List, Optional, Sequence
 
@@ -78,6 +79,41 @@ _POLL_INTERVAL_S = 0.05
 # Safety ceiling on the number of poll iterations in a blocking move, so a
 # never-converging stream cannot wedge the caller forever.
 _MAX_POLL_ITERS = 2000
+
+
+def _rotvec_to_quat(rx: float, ry: float, rz: float) -> tuple:
+    """Convert an axis-angle (rotation-vector) orientation to a unit quaternion.
+
+    UR poses carry orientation as a rotation vector ``[rx, ry, rz]`` (axis * angle
+    in radians). Returns ``(w, x, y, z)``.
+    """
+    angle = math.sqrt(rx * rx + ry * ry + rz * rz)
+    if angle < 1e-12:
+        return (1.0, 0.0, 0.0, 0.0)
+    s = math.sin(angle / 2.0)
+    return (math.cos(angle / 2.0), rx / angle * s, ry / angle * s, rz / angle * s)
+
+
+def _orientation_angle(a: Sequence[float], b: Sequence[float]) -> float:
+    """Smallest rotation angle (rad) between two orientations given as rotvecs.
+
+    Comparing rotation-vector COMPONENTS directly is wrong near 180 degrees: the
+    same physical orientation has two equivalent representations (the axis-angle
+    "double cover"), e.g. ``[0,-3.14,0.5]`` and its wrapped/negated form describe
+    the same pose but differ wildly component-by-component. This converts both to
+    quaternions and returns the true angular distance (``abs`` of the dot handles
+    the double cover), so equivalent representations register as ~0.
+
+    Args:
+        a, b: rotation vectors ``[rx, ry, rz]`` (radians).
+
+    Returns:
+        The angle between the two orientations in radians, in ``[0, pi]``.
+    """
+    qa = _rotvec_to_quat(a[0], a[1], a[2])
+    qb = _rotvec_to_quat(b[0], b[1], b[2])
+    dot = abs(sum(x * y for x, y in zip(qa, qb)))
+    return 2.0 * math.acos(min(1.0, dot))
 
 
 class MotionController:
@@ -538,11 +574,19 @@ class MotionController:
         """Block until the TCP pose is within ``convergence_tol`` of ``ur_target``.
 
         Polls :meth:`RobotConnection.latest_state` every ``_POLL_INTERVAL_S``
-        seconds, parses each frame with :func:`parse_state`, and returns when
-        ``max(abs(tcp_pose[i] - ur_target[i]))`` across all six components is
-        below :attr:`RobotConfig.convergence_tol`. Empty or malformed frames are
-        skipped (the robot may not have reported yet). This replaces the legacy
-        magic ``0.0001`` threshold with the configurable tolerance.
+        seconds and returns once **both**:
+
+        * the position error ``max(abs(dx, dy, dz))`` is below
+          :attr:`RobotConfig.convergence_tol` (meters), and
+        * the **orientation angle** between the actual and target rotation vectors
+          is below ``convergence_tol`` (radians).
+
+        Orientation is compared by ANGLE (via :func:`_orientation_angle`), not by
+        rotation-vector components: near 180 degrees the controller may report the
+        equivalent "wrapped" rotation vector (axis-angle double cover), e.g. a
+        target ``[..,-3.14, 0.5]`` reported as ``[.., 3.06, -0.49]`` — the same
+        pose, but a component-wise compare would never converge and the move would
+        falsely time out.
 
         Args:
             ur_target: Target TCP pose ``[x, y, z, rx, ry, rz]`` in the UR base
@@ -561,11 +605,11 @@ class MotionController:
                 except ValueError:
                     state = None
                 if state is not None:
-                    delta = max(
-                        abs(state.tcp_pose[i] - ur_target[i])
-                        for i in range(_PAYLOAD_LEN)
+                    pos_err = max(
+                        abs(state.tcp_pose[i] - ur_target[i]) for i in range(3)
                     )
-                    if delta < tol:
+                    ang_err = _orientation_angle(state.tcp_pose[3:6], ur_target[3:6])
+                    if pos_err < tol and ang_err < tol:
                         return
             time.sleep(_POLL_INTERVAL_S)
         raise TimeoutError(
